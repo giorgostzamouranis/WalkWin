@@ -42,4 +42,24 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
+
+    <queries>
+        <!-- For geo: scheme -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+
+        <!-- For https: scheme to ensure a browser can handle it -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https"/>
+        </intent>
+
+        <!-- For comgooglemaps: scheme -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="comgooglemaps"/>
+        </intent>
+    </queries>
 </manifest>

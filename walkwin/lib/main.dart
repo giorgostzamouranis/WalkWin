@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,6 +24,27 @@ class MyApp extends StatelessWidget {
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
+  Future<void> _openMaps(BuildContext context) async {
+    final geoUrl = Uri.parse('geo:0,0');
+    if (await canLaunchUrl(geoUrl)) {
+      await launchUrl(geoUrl, mode: LaunchMode.externalApplication);
+    } else {
+      final googleMapsUrl = Uri.parse('comgooglemaps://');
+      if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        final webUrl = Uri.parse('https://www.google.com/maps');
+        if (await canLaunchUrl(webUrl)) {
+          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open maps.')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,14 +52,12 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Upper Section with Walcoins, Logo, and Profile
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Walcoins Section
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
@@ -58,12 +78,10 @@ class HomePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  // Logo in the Center
                   const CircleAvatar(
                     radius: 30,
                     backgroundImage: AssetImage('assets/images/logo.png'),
                   ),
-                  // Profile Section
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -89,42 +107,61 @@ class HomePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
-            // BOOST STEPS Button
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.yellow,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  ),
-                  icon: Image.asset(
-                    'assets/images/bolt.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                  label: const Text(
-                    "BOOST STEPS X2",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontWeight: FontWeight.bold,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellow,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
+                    ),
+                    icon: Image.asset(
+                      'assets/images/bolt.png',
+                      width: 24,
+                      height: 24,
+                    ),
+                    label: const Text(
+                      "BOOST STEPS X2",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: ElevatedButton(
+                        onPressed: () => _openMaps(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00E6B0),
+                          fixedSize: const Size(60, 60),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: EdgeInsets.zero, // Remove padding
+                        ),
+                        child: Image.asset(
+                          'assets/icons/map.png',
+                          width: 50,
+                          height: 50,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 10),
-
-            // Steps Today Circular Indicator
             Expanded(
               child: Column(
                 children: [
                   const SizedBox(height: 30),
-                  CircularStepsWidget(
+                  const CircularStepsWidget(
                     title: "Steps Today",
                     steps: "7.586",
                     size: 270,
@@ -160,14 +197,13 @@ class HomePage extends StatelessWidget {
           ],
         ),
       ),
-      // Custom Bottom Navigation Bar
       bottomNavigationBar: Container(
-        height: 60, // Reduced height to avoid overflow
+        height: 60,
         decoration: const BoxDecoration(
-          color: Color(0xFF004D40), // Dark green background
+          color: Color(0xFF004D40),
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
         ),
         child: Row(
@@ -196,12 +232,12 @@ class _NavButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 50, // Slightly reduced width
-        height: 50, // Slightly reduced height
+        width: 50,
+        height: 50,
         decoration: BoxDecoration(
-          color: Colors.white, // Button background color
-          borderRadius: BorderRadius.circular(12), // Rounded corners
-          boxShadow: [
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 4,
@@ -211,9 +247,9 @@ class _NavButton extends StatelessWidget {
         ),
         child: Center(
           child: Image.asset(
-            imagePath, // Load custom image
-            width: 24,
-            height: 24,
+            imagePath,
+            width: 40,
+            height: 40,
             fit: BoxFit.contain,
           ),
         ),
@@ -248,29 +284,24 @@ class CircularStepsWidget extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Inner Circle - Solid Color (#004D40)
           Container(
             width: size * 0.85,
             height: size * 0.85,
             decoration: const BoxDecoration(
-              color: Color(0xFF004D40), // Inner Circle Color
+              color: Color(0xFF004D40),
               shape: BoxShape.circle,
             ),
           ),
-
-          // Circular Progress Bar
           SizedBox(
             width: size,
             height: size,
             child: CircularProgressIndicator(
-              value: 0.7, // Progress value
-              color: Color(0xFF00E6B0), // Progress Bar Color
+              value: 0.7,
+              color: const Color(0xFF00E6B0),
               strokeWidth: size * 0.08,
               backgroundColor: Colors.transparent,
             ),
           ),
-
-          // Centered Content
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
