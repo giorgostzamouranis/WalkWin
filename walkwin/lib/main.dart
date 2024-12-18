@@ -7,7 +7,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
-
+ 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -52,12 +52,14 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // Top Section
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Walcoins
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
@@ -78,10 +80,12 @@ class HomePage extends StatelessWidget {
                       ),
                     ],
                   ),
+                  // Logo
                   const CircleAvatar(
                     radius: 30,
                     backgroundImage: AssetImage('assets/images/logo.png'),
                   ),
+                  // Profile
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -106,7 +110,10 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 16),
+            
+            // Buttons row
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -115,8 +122,7 @@ class HomePage extends StatelessWidget {
                     onPressed: () {},
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.yellow,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     ),
                     icon: Image.asset(
                       'assets/images/bolt.png',
@@ -143,7 +149,7 @@ class HomePage extends StatelessWidget {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          padding: EdgeInsets.zero, // Remove padding
+                          padding: EdgeInsets.zero,
                         ),
                         child: Image.asset(
                           'assets/icons/map.png',
@@ -156,7 +162,10 @@ class HomePage extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 10),
+
+            // Steps and Circular Widgets
             Expanded(
               child: Column(
                 children: [
@@ -197,6 +206,7 @@ class HomePage extends StatelessWidget {
           ],
         ),
       ),
+      // Bottom Navigation Bar
       bottomNavigationBar: Container(
         height: 60,
         decoration: const BoxDecoration(
@@ -209,8 +219,152 @@ class HomePage extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _NavButton(imagePath: 'assets/icons/home_nav.png', onTap: () {}),
-            _NavButton(imagePath: 'assets/icons/shop_nav.png', onTap: () {}),
+            _NavButton(
+              imagePath: 'assets/icons/home_nav.png',
+              onTap: () {
+                // If needed, we can navigate home
+                // Currently on home, so no action
+              },
+            ),
+            _NavButton(
+              imagePath: 'assets/icons/shop_nav.png',
+              onTap: () {
+                // Navigate to Store Page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const StorePage()),
+                );
+              },
+            ),
+            _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {}),
+            _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class StorePage extends StatelessWidget {
+  const StorePage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.teal.shade700,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Section (same as HomePage)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Walcoins
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        "Walcoins",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        "00.00",
+                        style: TextStyle(
+                          color: Colors.yellowAccent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Logo
+                  const CircleAvatar(
+                    radius: 30,
+                    backgroundImage: AssetImage('assets/images/logo.png'),
+                  ),
+                  // Profile
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white,
+                        backgroundImage:
+                            const AssetImage('assets/images/profile.png'),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Nikos_10",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Available coupons box
+            Container(
+              width: 200,
+              height: 29,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00E6B0),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Center(
+                child: Text(
+                  "Available coupons",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600, // semibold
+                  ),
+                ),
+              ),
+            ),
+
+            // More content can be added here as required
+          ],
+        ),
+      ),
+      // Bottom Navigation Bar (same as HomePage)
+      bottomNavigationBar: Container(
+        height: 60,
+        decoration: const BoxDecoration(
+          color: Color(0xFF004D40),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _NavButton(
+              imagePath: 'assets/icons/home_nav.png', 
+              onTap: () {
+                // Navigate back to Home
+                Navigator.pop(context);
+              },
+            ),
+            _NavButton(
+              imagePath: 'assets/icons/shop_nav.png', 
+              onTap: () {
+                // Already on Store page, no action or could pop and push again
+              }
+            ),
             _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {}),
             _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
           ],
