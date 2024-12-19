@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'store_page.dart';
+import 'challenges_page.dart';
 
 
 class HomePage extends StatelessWidget {
@@ -233,7 +234,13 @@ class HomePage extends StatelessWidget {
                 );
               },
             ),
-            _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {}),
+            _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Challenges()),
+                );
+            }
+            ),
             _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
           ],
         ),
