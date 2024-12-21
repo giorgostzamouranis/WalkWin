@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'store_page.dart';
 import 'challenges_page.dart';
+import 'profile_page.dart';
 
 
 class HomePage extends StatelessWidget {
@@ -96,11 +97,16 @@ class HomePage extends StatelessWidget {
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.white,
-                        backgroundImage:
-                            const AssetImage('assets/images/profile.png'),
+                      InkWell(
+                        onTap: () { Navigator.push(context,MaterialPageRoute(builder: (context) => Profile()),
+                        );
+                        },
+
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.white,
+                          backgroundImage: const AssetImage('assets/images/profile.png'),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -114,10 +120,11 @@ class HomePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
             
             
             ///////////// Buttons Row //////////////////

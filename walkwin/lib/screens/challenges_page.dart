@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'store_page.dart';
+import 'profile_page.dart';
 
 class Challenges extends StatefulWidget {
   const Challenges({Key? key}) : super(key: key);
@@ -103,31 +104,37 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
 
                       // Profile
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Colors.white,
-                            backgroundImage:
-                                const AssetImage('assets/images/profile.png'),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            "Nikos_10",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      InkWell(
+                        onTap: () { Navigator.push(context,MaterialPageRoute(builder: (context) => Profile()),
+                        );
+                        },
+
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.white,
+                          backgroundImage: const AssetImage('assets/images/profile.png'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Nikos_10",
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
+
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
 
 
 
@@ -191,7 +198,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                             setState(() {
                               activeMessage = {
                                 "title":"Easy mission!",
-                                "description": "Step Goal: 4,000 steps\nTime Period: 24 hours\n\nA gentle start! Perfect for beginners or a casual walk. Earn coins effortlessly while staying active.",
+                                "description": "Step Goal: 4,000 steps\nTime Period: 12 hours\n\nA gentle start! Perfect for beginners or a casual walk. Earn coins effortlessly while staying active.",
                                 "coinValue" : 5
                               
                               };
@@ -272,7 +279,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                             setState(() {
                               activeMessage = {
                                 "title":"Not tired yet?",
-                                "description": "Step Goal: 12,000 steps\nTime Period: 36 hoursn\n\nThink you’ve got more in the tank? Take on this tougher challenge for bigger rewards and a stronger you!",
+                                "description": "Step Goal: 20,000 steps\nTime Period: 72 hours\n\nThink you’ve got more in the tank? Take on this tougher challenge for bigger rewards and a stronger you!",
                                 "coinValue" : 15
                               };
                             });
@@ -314,7 +321,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                             setState(() {
                               activeMessage = {
                                 "title":"For brave ones!",
-                                "description": "Step Goal: 18,000 steps\nTime Period: 48 hours\n\nThis is it—the ultimate test of willpower and stamina. Only the boldest will claim the reward. Are you ready?",
+                                "description": "Step Goal: 40,000 steps\nTime Period: 96 hours\n\nThis is it—the ultimate test of willpower and stamina. Only the boldest will claim the reward. Are you ready?",
                                 "coinValue" : 20
                               };
                             });
@@ -339,6 +346,10 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
 
 /////////////////////// Active message ////////////////////////////
+
+
+/////// Bluer effect ///////
+            
             if (activeMessage != null)
               BackdropFilter( //The BackdropFilter widget applies an effect (in this case, a blur) to all widgets that are behind it in the widget tree.
                 filter: ImageFilter.blur(
@@ -352,7 +363,8 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
               
               
               
-              
+//////// Description rectangular ////////
+
               if (activeMessage != null)
                 Center(
                   child: SlideTransition(
@@ -452,7 +464,8 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                   
                   
                   
- // Bottom Navigation Bar (same as HomePage)
+ /////// Bottom Navigation Bar (same as HomePage) ///////////
+ 
       bottomNavigationBar: Container(
         height: 60,
         decoration: const BoxDecoration(
@@ -495,11 +508,11 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
 
 
-        /////////////// ChallengeButton//////////////////////////////
+        /////////////// ChallengeButton /////////////////////////////
 
           Widget _buildChallengeButton(String title, int coinValue) {
             return Container(
-              height: 150,
+              height: 120,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: const Color(0xFF00E6B0),
