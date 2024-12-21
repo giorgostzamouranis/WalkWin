@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'store_page.dart';
 
 class Challenges extends StatefulWidget {
@@ -100,7 +101,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                         backgroundImage: AssetImage('assets/images/logo.png'),
                       ),
 
-                      
+
                       // Profile
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -338,6 +339,20 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
 
 /////////////////////// Active message ////////////////////////////
+            if (activeMessage != null)
+              BackdropFilter( //The BackdropFilter widget applies an effect (in this case, a blur) to all widgets that are behind it in the widget tree.
+                filter: ImageFilter.blur(
+                  sigmaX: 5.0, // Horizontal blur intensity
+                  sigmaY: 5.0, // Vertical blur intensity
+                ),
+                child: Container(
+                  color: Colors.black.withOpacity(0.4), // Dim background
+                ),
+              ),
+              
+              
+              
+              
               if (activeMessage != null)
                 Center(
                   child: SlideTransition(
