@@ -51,27 +51,36 @@ class HomePage extends StatelessWidget {
                   
                   
                   
-                  // Walcoins
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        "Walcoins",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
+                      // Walcoins
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children:[
+                          Text(
+                            "Walcoins",
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold
+                            ),
+                          ),
+                        SizedBox(
+                          height: 40,
+                          width: 40,
+                          child: Image.asset(
+                            'assets/icons/coin.png',
+                            fit: BoxFit.contain,  
+                          ),
                       ),
-                      Text(
-                        "00.00",
-                        style: TextStyle(
-                          color: Colors.yellowAccent,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                          Text(
+                            "00.00",
+                            style: TextStyle(
+                              color: Colors.yellowAccent,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                   
                   
                   
