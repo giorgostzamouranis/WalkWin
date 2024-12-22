@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+    <string>comgooglemaps</string> <!-- For Google Maps -->
+    <string>geo</string>           <!-- For native map URLs -->
+	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location to show map directions.</string>
 </dict>
 </plist>

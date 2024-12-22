@@ -1,5 +1,9 @@
-import 'dart:ui'; // for ImageFilter
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'home_page.dart';
+import 'challenges_page.dart';
+import 'profile_page.dart';
+
 
 class StorePage extends StatelessWidget {
   const StorePage({Key? key}) : super(key: key);
@@ -10,113 +14,146 @@ class StorePage extends StatelessWidget {
       barrierDismissible: true,
       barrierLabel: 'Close',
       barrierColor: const Color(0xFF008374).withOpacity(0.73),
-      pageBuilder: (context, _, __) {
-        return Center(
-          child: Material(
-            type: MaterialType.transparency,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 329,
-                  height: 275,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD9D9D9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => Navigator.pop(context),
-                              child: Image.asset(
-                                'assets/icons/arrow_back.png',
-                                width: 36,
-                                height: 36,
-                              ),
-                            ),
-                            const Expanded(
-                              child: Center(
-                                child: Text(
-                                  "DESCRIPTION",
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 36),
-                          ],
-                        ),
-                        const Spacer(),
-                        Text(
-                          description,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const Spacer(),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    width: 181,
-                    height: 62,
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation1, animation2) {
+        return const SizedBox();
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final offsetAnimation = Tween<Offset>(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOut,
+        ));
+
+        return SlideTransition(
+          position: offsetAnimation,
+          child: Center(
+            child: Material(
+              type: MaterialType.transparency,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 329,
+                    height: 275,
                     decoration: BoxDecoration(
                       color: const Color(0xFFD9D9D9),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
-                            "Get coupon",
-                            style: TextStyle(
-                              fontSize: 20,
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: Image.asset(
+                                  'assets/icons/arrow_back.png',
+                                  width: 36,
+                                  height: 36,
+                                ),
+                              ),
+                              const Expanded(
+                                child: Center(
+                                  child: Text(
+                                    "DESCRIPTION",
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 36),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(
+                            description,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 24,
                               fontWeight: FontWeight.w600,
                               color: Colors.black,
                             ),
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Transform.translate(
-                                offset: const Offset(0, -5),
-                                child: const Text(
-                                  "50",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                              Image.asset(
-                                'assets/icons/coin.png',
-                                width: 25,
-                                height: 25,
-                              ),
-                            ],
-                          ),
+                          const Spacer(),
                         ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          transitionDuration: const Duration(milliseconds: 400),
+                          reverseTransitionDuration: const Duration(milliseconds: 400),
+                          pageBuilder: (context, animation, secondaryAnimation) =>
+                              const CouponPage(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const curve = Curves.easeOut;
+                            final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                            return FadeTransition(
+                              opacity: curvedAnimation,
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 181,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD9D9D9),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "Get coupon",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Transform.translate(
+                                  offset: const Offset(0, -5),
+                                  child: const Text(
+                                    "50",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                                Image.asset(
+                                  'assets/icons/coin.png',
+                                  width: 25,
+                                  height: 25,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -145,14 +182,17 @@ class StorePage extends StatelessWidget {
                     child: Column(
                       children: [
                         const SizedBox(height: 4),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "Weekly offer",
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              "Weekly offer",
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -179,14 +219,17 @@ class StorePage extends StatelessWidget {
                         const SizedBox(height: 16),
                         for (int i = 0; i < 5; i++) ...[
                           const SizedBox(height: 4),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              ["Clothing", "Sports", "Digital", "Food/Drinks", "Travel"][i],
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                ["Clothing", "Sports", "Digital", "Food/Drinks", "Travel"][i],
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
@@ -209,8 +252,8 @@ class StorePage extends StatelessWidget {
                                   ],
                                   [
                                     "Get 25% off at nike.com",
-                                    "Get 20% off at addidas.com",
-                                    "Get 20% off at assics.com"
+                                    "Get 20% off at adidas.com",
+                                    "Get 20% off at asics.com"
                                   ],
                                   [
                                     "Get 3 months free Spotify subscription",
@@ -223,7 +266,7 @@ class StorePage extends StatelessWidget {
                                     "Get 20% off at La Pasteria"
                                   ],
                                   [
-                                    "Get 20% off at scyscanner.net",
+                                    "Get 20% off at skyscanner.net",
                                     "Get 20% off at ferryhopper.com",
                                     "Get 20% off at freenow"
                                   ]
@@ -279,9 +322,32 @@ class StorePage extends StatelessWidget {
                           CircleAvatar(
                             radius: 18,
                             backgroundColor: Colors.white,
-                            backgroundImage:
-                                const AssetImage('assets/images/profile.png'),
+                            backgroundImage: const AssetImage('assets/images/profile.png'),
+                            child: GestureDetector(
+                              onTap: () {
+                                print("Profile icon tapped"); // Debugging print statement
+                                Navigator.push(
+                                  context,
+                                  PageRouteBuilder(
+                                    transitionDuration: const Duration(milliseconds: 300),
+                                    pageBuilder: (context, animation, secondaryAnimation) => const Profile(),
+                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                      final curvedAnimation = CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOut,
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: curvedAnimation,
+                                        child: child,
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
                           ),
+
                           const SizedBox(height: 8),
                           const Text(
                             "Nikos_10",
@@ -342,21 +408,65 @@ class StorePage extends StatelessWidget {
             _NavButton(
               imagePath: 'assets/icons/home_nav.png',
               onTap: () {
-                Navigator.pop(context);
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const HomePage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(-1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
+                );
               },
             ),
             _NavButton(
               imagePath: 'assets/icons/shop_nav.png',
-              onTap: () {},
+              onTap: () {}, // No action needed; already on StorePage
             ),
-            _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {}),
-            _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
+            _NavButton(
+              imagePath: 'assets/icons/target_nav.png',
+              onTap: () {
+                Navigator.of(context).push(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const Challenges(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+            _NavButton(
+              imagePath: 'assets/icons/friend_nav.png',
+              onTap: () {}, // Placeholder for Friends Page or other functionality
+            ),
           ],
         ),
       ),
+
     );
   }
 }
+
 
 class _CarouselWidget extends StatefulWidget {
   final int carouselIndex;
@@ -375,7 +485,7 @@ class _CarouselWidget extends StatefulWidget {
 }
 
 class __CarouselWidgetState extends State<_CarouselWidget> {
-  final PageController _pageController = PageController(viewportFraction: 0.8);
+  final PageController _pageController = PageController(viewportFraction: 1.0); // Full width
   int _currentPage = 0;
 
   @override
@@ -393,15 +503,17 @@ class __CarouselWidgetState extends State<_CarouselWidget> {
 
   Widget _buildOffer(int index) {
     bool isCurrent = (index == _currentPage);
-    double width = isCurrent ? 375 : 295;
-    double height = isCurrent ? 111 : 82;
+
+    // Match the size and style of the "Weekly offer" box
+    double boxWidth = 375;
+    double boxHeight = 111;
 
     return GestureDetector(
       onTap: () => widget.onOfferTap(index),
       child: Container(
-        width: width,
-        height: height,
-        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 20),
+        width: boxWidth,
+        height: boxHeight,
+        margin: const EdgeInsets.symmetric(horizontal: 8.0),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: Colors.white,
@@ -431,6 +543,27 @@ class __CarouselWidgetState extends State<_CarouselWidget> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 130, // Slightly larger to account for box height and spacing
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            itemCount: widget.images.length,
+            itemBuilder: (context, index) {
+              return _buildOffer(index);
+            },
+          ),
+        ),
+        const SizedBox(height: 5),
+        _buildDots(),
+      ],
+    );
+  }
+
   Widget _buildDots() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -450,27 +583,6 @@ class __CarouselWidgetState extends State<_CarouselWidget> {
           ),
         );
       }),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 170,
-          child: PageView.builder(
-            controller: _pageController,
-            physics: const BouncingScrollPhysics(),
-            itemCount: widget.images.length,
-            itemBuilder: (context, index) {
-              return _buildOffer(index);
-            },
-          ),
-        ),
-        const SizedBox(height: 5),
-        _buildDots(),
-      ],
     );
   }
 }
@@ -506,6 +618,91 @@ class _NavButton extends StatelessWidget {
             width: 40,
             height: 40,
             fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CouponPage extends StatelessWidget {
+  const CouponPage({Key? key}) : super(key: key);
+
+  String generateCouponCode() {
+    return (10000000 + (99999999 - 10000000) * (DateTime.now().millisecond / 1000))
+        .toInt()
+        .toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final couponCode = generateCouponCode();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF008374),
+      body: Center(
+        child: Container(
+          width: 239,
+          height: 150,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pushReplacement(
+                        PageRouteBuilder(
+                          transitionDuration: const Duration(milliseconds: 800),
+                          reverseTransitionDuration: const Duration(milliseconds: 800),
+                          pageBuilder: (context, animation, secondaryAnimation) => const StorePage(),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const curve = Curves.easeInOut;
+                            var curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, -1),
+                                end: Offset.zero,
+                              ).animate(curvedAnimation),
+                              child: child,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                const Text(
+                  "Coupon code:",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  couponCode,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
           ),
         ),
       ),
