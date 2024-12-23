@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'sign_in_page.dart';
+import 'sign_up_page.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    print('Rendering WelcomePage');
     return Scaffold(
       body: Stack(
         children: [
@@ -69,7 +72,15 @@ class WelcomePage extends StatelessWidget {
                         width: 353,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: (){
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SignIn(),
+                              ),
+                            );
+                          },
+                          
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black, // Button color
                             shape: RoundedRectangleBorder(
@@ -83,6 +94,7 @@ class WelcomePage extends StatelessWidget {
                               color: Colors.white, // Text color
                             ),
                           ),
+                        
                         ),
                       ),
                       SizedBox(height: 10),
@@ -101,7 +113,14 @@ class WelcomePage extends StatelessWidget {
                         width: 353,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: (){
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SignUpPage(),
+                              ),
+                            );
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black, // Button color
                             shape: RoundedRectangleBorder(

@@ -1,26 +1,42 @@
-
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:device_preview/device_preview.dart'; // Import DevicePreview
+import 'screens/welcome_page.dart';
+import 'screens/home_page.dart';
+import 'screens/sign_in_page.dart';
+import 'screens/sign_up_page.dart';
+import 'screens/store_page.dart';
 import 'screens/challenges_page.dart';
 import 'screens/profile_page.dart';
-import 'package:device_preview/device_preview.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'screens/sign_in_page.dart';
-import 'screens/welcome_page.dart';
-import 'screens/sign_up_page.dart';
-import 'screens/home_page.dart';
-import 'screens/store_page.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  // Platform-specific Firebase initialization
+  if (kIsWeb) {
+    await Firebase.initializeApp(
+      options: FirebaseOptions(
+        apiKey: "AIzaSyAASVkDIXTZ_LizUE_8bjvftPGCpFBu-ps",
+        authDomain: "walkwin-5d102.firebaseapp.com",
+        projectId: "walkwin-5d102",
+        storageBucket: "walkwin-5d102.firebasestorage.app",
+        messagingSenderId: "613299618395",
+        appId: "1:613299618395:web:2d534c14cedd484e89757e",
+        measurementId: "G-7R8J4RJMP2",
+      ),
+    );
+  } else {
+    await Firebase.initializeApp(); // Default for mobile platforms
+  }
+
   runApp(
     DevicePreview(
-    enabled: !kReleaseMode,
-    builder: (context) => MyApp(), // Wrap your app
-  ),);
+      enabled: !kReleaseMode, // Enable DevicePreview only in debug mode
+      builder: (context) => const MyApp(),
+    ),
+  );
 }
-
-
-
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -30,24 +46,25 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'WalkWin',
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
+      locale: DevicePreview.locale(context), // Use DevicePreview's locale
+      builder: DevicePreview.appBuilder, // Wrap widgets with DevicePreview
       theme: ThemeData(
         primarySwatch: Colors.teal,
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const HomePage(),
+        '/': (context) => const WelcomePage(),
+        '/home': (context) => const HomePage(),
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
         '/profile': (context) => const Profile(),
         '/signin': (context) => const SignIn(),
         '/signup': (context) => const SignUpPage(),
-        '/welcome': (context) => const WelcomePage()
       },
     );
   }
 }
+
 
 
 /*

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "613299618395",
+    "project_id": "walkwin-5d102",
+    "storage_bucket": "walkwin-5d102.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:613299618395:android:51b18b971950e1d289757e",
+        "android_client_info": {
+          "package_name": "com.example.walkwin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpc57q-VWJguIjjNovE7Vh0jaZm8DbB_k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

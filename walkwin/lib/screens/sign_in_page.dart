@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home_page.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({Key? key}) : super(key: key);
@@ -9,7 +11,46 @@ class SignIn extends StatefulWidget {
 
 class _SignInState extends State<SignIn> {
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  void _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      _showError('Please fill in all fields.');
+      return;
+    }
+
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      _showSuccess('Logged in successfully!');
+
+    // Navigate to HomePage
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const HomePage()),
+    );
+
+    } on FirebaseAuthException catch (e) {
+      _showError(e.message ?? 'An error occurred during login.');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.red))),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.green))),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +99,7 @@ class _SignInState extends State<SignIn> {
 
                 // Input boxes
                 _buildInputBox(
+                  controller: _emailController,
                   hintText: 'Email address',
                   obscureText: false,
                 ),
@@ -65,6 +107,7 @@ class _SignInState extends State<SignIn> {
                 SizedBox(height: 30),
 
                 _buildInputBox(
+                  controller: _passwordController,
                   hintText: 'Password',
                   obscureText: _obscurePassword,
                   onEyePressed: () {
@@ -76,17 +119,13 @@ class _SignInState extends State<SignIn> {
 
                 SizedBox(height: 30),
 
-
-
-              
-
-                // Create account button
+                // Log in button
                 Center(
                   child: SizedBox(
                     width: 353,
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: _signIn,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
@@ -113,6 +152,7 @@ class _SignInState extends State<SignIn> {
   }
 
   Widget _buildInputBox({
+    required TextEditingController controller,
     required String hintText,
     required bool obscureText,
     VoidCallback? onEyePressed,
@@ -137,6 +177,7 @@ class _SignInState extends State<SignIn> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15.0),
               child: TextField(
+                controller: controller,
                 obscureText: obscureText,
                 decoration: InputDecoration(
                   hintText: hintText,
