@@ -1,12 +1,18 @@
-
-import 'package:flutter/material.dart';
 import 'screens/home_page.dart';
 import 'screens/store_page.dart';
 import 'screens/challenges_page.dart';
 import 'screens/profile_page.dart';
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    DevicePreview(
+    enabled: !kReleaseMode,
+    builder: (context) => MyApp(), // Wrap your app
+  ),);
 }
 
 
@@ -20,6 +26,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'WalkWin',
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         primarySwatch: Colors.teal,
       ),

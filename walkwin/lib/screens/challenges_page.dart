@@ -22,7 +22,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
     // Initialize the animation controller
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
 
@@ -57,7 +57,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
               children: [
                 // Top Section
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.only(left:16.0,right:16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -113,7 +113,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                         },
 
                         child: CircleAvatar(
-                          radius: 18,
+                          radius: 20,
                           backgroundColor: Colors.white,
                           backgroundImage: const AssetImage('assets/images/profile.png'),
                         ),

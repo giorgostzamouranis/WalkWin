@@ -44,7 +44,7 @@ class HomePage extends StatelessWidget {
             
             // Top Section
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(left:16.0,right:16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -103,7 +103,7 @@ class HomePage extends StatelessWidget {
                         },
 
                         child: CircleAvatar(
-                          radius: 18,
+                          radius: 20,
                           backgroundColor: Colors.white,
                           backgroundImage: const AssetImage('assets/images/profile.png'),
                         ),
