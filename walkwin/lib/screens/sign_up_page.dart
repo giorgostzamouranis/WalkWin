@@ -63,6 +63,11 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
 
+
+
+
+
+
 ////////////////  Creating the Scaffold ///////////////
   @override
   Widget build(BuildContext context) {

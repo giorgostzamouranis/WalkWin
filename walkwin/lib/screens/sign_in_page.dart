@@ -52,6 +52,13 @@ class _SignInState extends State<SignIn> {
     );
   }
 
+
+
+
+
+
+////////////////  Creating the Scaffold ///////////////
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
