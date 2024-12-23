@@ -393,6 +393,10 @@ class StorePage extends StatelessWidget {
           );
         },
       ),
+
+
+
+      ////////////////// Navigatiob bar////
       bottomNavigationBar: Container(
         height: 60,
         decoration: const BoxDecoration(

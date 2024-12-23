@@ -1,4 +1,4 @@
-/*
+
 import 'screens/challenges_page.dart';
 import 'screens/profile_page.dart';
 import 'package:device_preview/device_preview.dart';
@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'screens/sign_in_page.dart';
 import 'screens/welcome_page.dart';
 import 'screens/sign_up_page.dart';
+import 'screens/home_page.dart';
+import 'screens/store_page.dart';
 
 
 void main() {
@@ -47,8 +49,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-*/
 
+/*
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -76,7 +78,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.teal,
       ),
-      home: const SignIn(), // Launch the ProfilePage
+      home: const SignUpPage(), // Launch the ProfilePage
     );
   }
 }
+*/

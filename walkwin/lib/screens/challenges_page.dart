@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'store_page.dart';
 import 'profile_page.dart';
+import 'home_page.dart';
 
 class Challenges extends StatefulWidget {
   const Challenges({Key? key}) : super(key: key);
@@ -370,7 +371,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                   child: SlideTransition(
                     position: _animation,
                       child: Container(
-                        height: 320,
+                        height: 350,
                         width: 350,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade300,
@@ -409,7 +410,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 20), // Space between description and reward
+                                  const SizedBox(height: 50), // Space between description and reward
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
@@ -481,15 +482,46 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
             _NavButton(
               imagePath: 'assets/icons/home_nav.png',
               onTap: () {
-                Navigator.pop(context);
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const HomePage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(-1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
+                );
               },
             ),
             _NavButton(
               imagePath: 'assets/icons/shop_nav.png',
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const StorePage()),
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const StorePage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(-1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -512,7 +544,7 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
           Widget _buildChallengeButton(String title, int coinValue) {
             return Container(
-              height: 120,
+              height: 130,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: const Color(0xFF00E6B0),

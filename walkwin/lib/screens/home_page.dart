@@ -244,18 +244,47 @@ class HomePage extends StatelessWidget {
             _NavButton(
               imagePath: 'assets/icons/shop_nav.png',
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const StorePage()),
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const StorePage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
                 );
               },
             ),
-            _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Challenges()),
+            _NavButton(imagePath: 'assets/icons/target_nav.png', 
+              onTap: () {
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const  Challenges(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
                 );
-            }
+              },
             ),
             _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
           ],
