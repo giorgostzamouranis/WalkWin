@@ -1,7 +1,6 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -9,8 +8,7 @@ apply plugin: 'com.google.gms.google-services'
 
 android {
     namespace = "com.example.walkwin"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 34 // Explicit compileSdkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -23,8 +21,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.walkwin"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 23 // Minimum SDK for Firebase
+        targetSdk = 34 // Target SDK
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -41,6 +39,7 @@ flutter {
 }
 
 dependencies {
-    implementation platform('com.google.firebase:firebase-bom:33.7.0')
-    implementation 'com.google.firebase:firebase-analytics'
+    implementation platform('com.google.firebase:firebase-bom:33.7.0') // Firebase BoM
+    implementation 'com.google.firebase:firebase-analytics'           // Firebase Analytics
+    implementation 'com.google.firebase:firebase-auth'                // Firebase Authentication
 }

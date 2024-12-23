@@ -1,6 +1,24 @@
+/*
 dependencies {
     classpath 'com.google.gms:google-services:4.4.2'
 }
+*/
+
+
+buildscript {
+    repositories {
+        google() // Ensure this is included
+        mavenCentral() // Ensure this is included
+    }
+
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.0' // Update Gradle plugin version
+        classpath 'com.google.gms:google-services:4.3.15' // Use the latest Google Services plugin
+    }
+}
+
+
 
 allprojects {
     repositories {
