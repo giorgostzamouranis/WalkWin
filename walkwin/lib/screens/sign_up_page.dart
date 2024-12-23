@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'home_page.dart';
-
-
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
@@ -18,15 +17,16 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController(); // New Controller for Username
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-
   void _signUp() async {
-    final email = _emailController.text.trim(); // .text.trim() removes extra spaces from the start or the end 
+    final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
+    final username = _usernameController.text.trim(); // Get username input
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty) {
       _showError('Please fill in all fields.');
       return;
     }
@@ -36,39 +36,46 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
-//Sending the registration to firebase to be stored
     try {
-      await _auth.createUserWithEmailAndPassword(email: email, password: password); //await is to wait the store of the account to the firebase before going to next line of code
+      // Create user in Firebase Authentication
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Save additional data (username) in Firestore
+      final userId = userCredential.user?.uid;
+      if (userId != null) {
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'username': username,
+          'email': email,
+        });
+      }
+
       _showSuccess('Account created successfully!');
 
-
-
-// Navigate to HomePage
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-
+      // Navigate to HomePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? 'An error occurred during sign up.');
     }
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.red))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.red))),
+    );
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.green))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: TextStyle(color: Colors.green))),
+    );
   }
 
-
-
-
-
-
-
-////////////////  Creating the Scaffold ///////////////
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,7 +95,7 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 40), // Spacing for status bar
+                SizedBox(height: 40),
 
                 // Back arrow
                 GestureDetector(
@@ -114,7 +121,16 @@ class _SignUpPageState extends State<SignUpPage> {
 
                 SizedBox(height: 30),
 
-                // Input boxes
+                // Username Input
+                _buildInputBox(
+                  controller: _usernameController,
+                  hintText: 'Username',
+                  obscureText: false,
+                ),
+
+                SizedBox(height: 15),
+
+                // Email Input
                 _buildInputBox(
                   controller: _emailController,
                   hintText: 'Email address',
@@ -123,6 +139,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
                 SizedBox(height: 15),
 
+                // Password Input
                 _buildInputBox(
                   controller: _passwordController,
                   hintText: 'Password',
@@ -136,6 +153,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
                 SizedBox(height: 15),
 
+                // Confirm Password Input
                 _buildInputBox(
                   controller: _confirmPasswordController,
                   hintText: 'Confirm password',
@@ -180,8 +198,6 @@ class _SignUpPageState extends State<SignUpPage> {
       ),
     );
   }
-
-
 
   Widget _buildInputBox({
     required TextEditingController controller,
