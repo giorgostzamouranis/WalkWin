@@ -20,8 +20,9 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _confirmPasswordController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+
   void _signUp() async {
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim(); // .text.trim() removes extra spaces from the start or the end 
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
@@ -35,9 +36,12 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
 
+//Sending the registration to firebase to be stored
     try {
-      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      await _auth.createUserWithEmailAndPassword(email: email, password: password); //await is to wait the store of the account to the firebase before going to next line of code
       _showSuccess('Account created successfully!');
+
+
 
 // Navigate to HomePage
     Navigator.pushReplacement(
@@ -58,6 +62,8 @@ class _SignUpPageState extends State<SignUpPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.green))));
   }
 
+
+////////////////  Creating the Scaffold ///////////////
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,6 +175,8 @@ class _SignUpPageState extends State<SignUpPage> {
       ),
     );
   }
+
+
 
   Widget _buildInputBox({
     required TextEditingController controller,

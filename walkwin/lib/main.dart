@@ -13,7 +13,7 @@ import 'screens/profile_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Platform-specific Firebase initialization
+  // If Web
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: FirebaseOptions(
@@ -26,6 +26,8 @@ void main() async {
         measurementId: "G-7R8J4RJMP2",
       ),
     );
+    
+  //Else if android 
   } else {
     await Firebase.initializeApp(); // Default for mobile platforms
   }
