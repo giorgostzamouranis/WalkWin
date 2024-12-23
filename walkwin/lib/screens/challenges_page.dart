@@ -3,6 +3,9 @@ import 'dart:ui';
 import 'store_page.dart';
 import 'profile_page.dart';
 import 'home_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class Challenges extends StatefulWidget {
   const Challenges({Key? key}) : super(key: key);
@@ -104,38 +107,64 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                       ),
 
 
-                      // Profile
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      InkWell(
-                        onTap: () { Navigator.push(context,MaterialPageRoute(builder: (context) => Profile()),
-                        );
-                        },
+                  // Profile
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return CircularProgressIndicator(); // Show loading spinner while data is loading
+                      }
 
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.white,
-                          backgroundImage: const AssetImage('assets/images/profile.png'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Nikos_10",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return Text('No user data');
+                      }
+
+                      // Get the username and avatar from Firestore
+                      String username = snapshot.data!['username'] ?? 'No Username';
+                      String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png'; // Default avatar if none exists
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => Profile()), // Navigate to profile page
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.white,
+                              backgroundImage: AssetImage(avatarPath), // Dynamically set the avatar from Firestore
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            username,  // Display the username dynamically
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      );
+                    },
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
 
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
 
 
 

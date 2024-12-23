@@ -3,6 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'store_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+
 
 
 class HomePage extends StatelessWidget {
@@ -29,9 +33,7 @@ class HomePage extends StatelessWidget {
     }
   }
 
-
 ///////////////// Upper Bar //////////////
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,96 +41,111 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            
-            
-            
             // Top Section
             Padding(
-              padding: const EdgeInsets.only(left:16.0,right:16),
+              padding: const EdgeInsets.only(left: 16.0, right: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  
-                  
-                  
-                      // Walcoins
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children:[
-                          Text(
-                            "Walcoins",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold
-                            ),
-                          ),
-                        SizedBox(
-                          height: 40,
-                          width: 40,
-                          child: Image.asset(
-                            'assets/icons/coin.png',
-                            fit: BoxFit.contain,  
-                          ),
-                      ),
-                          Text(
-                            "00.00",
-                            style: TextStyle(
-                              color: Colors.yellowAccent,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                  
-                  
-                  
-                  // Logo
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundImage: AssetImage('assets/images/logo.png'),
-                  ),
-                  
-                  
-                  
-                  // Profile
+                  // Walcoins
                   Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      InkWell(
-                        onTap: () { Navigator.push(context,MaterialPageRoute(builder: (context) => Profile()),
-                        );
-                        },
-
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.white,
-                          backgroundImage: const AssetImage('assets/images/profile.png'),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Nikos_10",
+                      Text(
+                        "Walcoins",
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
-                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(
+                        height: 40,
+                        width: 40,
+                        child: Image.asset(
+                          'assets/icons/coin.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      Text(
+                        "00.00",
+                        style: TextStyle(
+                          color: Colors.yellowAccent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
 
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-            
-            
+                  // Logo
+                  const CircleAvatar(
+                    radius: 30,
+                    backgroundImage: AssetImage('assets/images/logo.png'),
+                  ),
+
+                  // Profile
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return CircularProgressIndicator(); // Show loading spinner while data is loading
+                      }
+
+                      if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      }
+
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return Text('No user data');
+                      }
+
+                      // Get the username and avatar from Firestore
+                      String username = snapshot.data!['username'] ?? 'No Username';
+                      String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png'; // Default avatar if none exists
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => Profile()), // Navigate to profile page
+                              );
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.white,
+                              backgroundImage: AssetImage(avatarPath), // Dynamically set the avatar from Firestore
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            username,  // Display the username dynamically
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             ///////////// Buttons Row //////////////////
-            
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -220,11 +237,8 @@ class HomePage extends StatelessWidget {
         ),
       ),
 
-
-
-
       /////////Navigation bar////////////
-      
+
       bottomNavigationBar: Container(
         height: 60,
         decoration: const BoxDecoration(
@@ -293,7 +307,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
 
 
 

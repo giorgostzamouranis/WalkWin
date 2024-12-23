@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'home_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 
 class StorePage extends StatelessWidget {

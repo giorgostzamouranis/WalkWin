@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';  // Import Firestore
 import 'home_page.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -17,14 +17,14 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController(); // New Controller for Username
+  final TextEditingController _usernameController = TextEditingController();  // Controller for username
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   void _signUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
-    final username = _usernameController.text.trim(); // Get username input
+    final username = _usernameController.text.trim();  // Get the username
 
     if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty) {
       _showError('Please fill in all fields.');
@@ -37,24 +37,24 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     try {
-      // Create user in Firebase Authentication
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+      // Create the user with email and password
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Save additional data (username) in Firestore
-      final userId = userCredential.user?.uid;
-      if (userId != null) {
-        await FirebaseFirestore.instance.collection('users').doc(userId).set({
-          'username': username,
-          'email': email,
-        });
-      }
+      // Save the username, user data, and default avatar in Firestore
+      String userId = userCredential.user!.uid;  // Get user ID from Firebase Auth
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'email': email,
+        'username': username,  // Store the username
+        'avatar': 'assets/images/Avatar1.png',  // Default avatar path
+        'createdAt': FieldValue.serverTimestamp(),  // Store account creation time
+      });
 
       _showSuccess('Account created successfully!');
 
-      // Navigate to HomePage
+      // Navigate to the home page
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomePage()),
@@ -65,15 +65,11 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, style: TextStyle(color: Colors.red))),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.red))));
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, style: TextStyle(color: Colors.green))),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.green))));
   }
 
   @override
@@ -81,23 +77,18 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background image
           Positioned.fill(
             child: Image.asset(
               'assets/images/background.png',
               fit: BoxFit.cover,
             ),
           ),
-
-          // Main content
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 40),
-
-                // Back arrow
+                SizedBox(height: 40), // Spacing for status bar
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Image.asset(
@@ -106,40 +97,28 @@ class _SignUpPageState extends State<SignUpPage> {
                     height: 28,
                   ),
                 ),
-
                 SizedBox(height: 30),
-
-                // Title
                 Text(
                   'Create account',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
-
                 SizedBox(height: 30),
-
-                // Username Input
+                
+                // Add Username input box
                 _buildInputBox(
                   controller: _usernameController,
                   hintText: 'Username',
                   obscureText: false,
                 ),
-
                 SizedBox(height: 15),
 
-                // Email Input
                 _buildInputBox(
                   controller: _emailController,
                   hintText: 'Email address',
                   obscureText: false,
                 ),
-
                 SizedBox(height: 15),
 
-                // Password Input
                 _buildInputBox(
                   controller: _passwordController,
                   hintText: 'Password',
@@ -150,10 +129,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     });
                   },
                 ),
-
                 SizedBox(height: 15),
 
-                // Confirm Password Input
                 _buildInputBox(
                   controller: _confirmPasswordController,
                   hintText: 'Confirm password',
@@ -164,10 +141,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     });
                   },
                 ),
-
                 SizedBox(height: 30),
 
-                // Create account button
                 Center(
                   child: SizedBox(
                     width: 353,
@@ -176,17 +151,11 @@ class _SignUpPageState extends State<SignUpPage> {
                       onPressed: _signUp,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       child: Text(
                         'Create account',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -230,20 +199,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: InputDecoration(
                   hintText: hintText,
                   border: InputBorder.none,
-                  hintStyle: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
+                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
             ),
           ),
           if (onEyePressed != null)
             IconButton(
-              icon: Icon(
-                obscureText ? Icons.visibility_off : Icons.visibility,
-                color: Colors.grey,
-              ),
+              icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
               onPressed: onEyePressed,
             ),
         ],
