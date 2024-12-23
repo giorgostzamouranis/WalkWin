@@ -5,6 +5,8 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'screens/sign_in_page.dart';
+import 'screens/welcome_page.dart';
+import 'screens/sign_up_page.dart';
 
 
 void main() {
@@ -37,7 +39,9 @@ class MyApp extends StatelessWidget {
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
         '/profile': (context) => const Profile(),
-        '/signin': (context) => const SignIn()
+        '/signin': (context) => const SignIn(),
+        '/signup': (context) => const SignUpPage(),
+        '/welcome': (context) => const WelcomePage()
       },
     );
   }
@@ -49,6 +53,9 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'screens/sign_in_page.dart'; // Make sure the ProfilePage is correctly imported.
+import 'screens/welcome_page.dart';
+import 'screens/sign_up_page.dart';
+
 
 void main() {
   runApp(
