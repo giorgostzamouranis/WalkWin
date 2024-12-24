@@ -52,5 +52,11 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location to show map directions.</string>
+
+	<key>NSCameraUsageDescription</key>   <!-- For Camera -->
+	<string>We need access to your camera to upload stories.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to upload stories.</string>
+
 </dict>
 </plist>

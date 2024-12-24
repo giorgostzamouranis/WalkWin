@@ -1,10 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'store_page.dart';
-import 'profile_page.dart';
-import 'home_page.dart';
-import 'challenges_page.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'story_view_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -14,364 +15,269 @@ class FriendsPage extends StatefulWidget {
 }
 
 class _FriendsPageState extends State<FriendsPage> {
-  final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _searchResults = [];
-  bool _isSearching = false; // Track if the user is searching
+  List<Map<String, dynamic>> stories = [];
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Function to perform search
-  void _searchUsers(String query) async {
-    if (query.isEmpty) {
+  @override
+  void initState() {
+    super.initState();
+    _fetchStories();
+  }
+
+  Future<void> _fetchStories() async {
+    final userId = _auth.currentUser?.uid;
+
+    if (userId != null) {
+      final snapshot = await FirebaseFirestore.instance.collection('stories').get();
       setState(() {
-        _searchResults = [];
-        _isSearching = false; // Reset searching state when query is empty
+        stories = snapshot.docs.map((doc) {
+          return {
+            'storyUrl': doc['storyUrl'],
+            'username': doc['username'],
+            'uid': doc['uid'],
+          };
+        }).toList();
       });
+    }
+  }
+
+  Future<void> _uploadStory() async {
+  if (kIsWeb) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Camera functionality is not supported on the web')),
+    );
+    return;
+  }
+
+  final ImagePicker picker = ImagePicker();
+  final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+
+  if (photo != null) {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
       return;
     }
 
-    setState(() {
-      _isSearching = true; // Set searching state when the user starts typing
-    });
+    try {
+      final file = File(photo.path);
+      final storageRef = FirebaseStorage.instance.ref().child('stories/$userId.jpg');
 
-    // Query Firestore for matching users
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isGreaterThanOrEqualTo: query)
-        .where('username', isLessThanOrEqualTo: '$query\uf8ff')
-        .get();
+      await storageRef.putFile(file);
+      final storyUrl = await storageRef.getDownloadURL();
 
-    // Map the results
-    setState(() {
-      _searchResults = snapshot.docs.map((doc) {
-        return {
-          'username': doc['username'],
-          'avatar': doc['avatar'] ?? 'assets/images/profile.png',
-        };
-      }).toList();
-    });
+      await FirebaseFirestore.instance.collection('stories').doc(userId).set({
+        'storyUrl': storyUrl,
+        'username': (await FirebaseFirestore.instance.collection('users').doc(userId).get())['username'],
+        'uid': userId,
+      });
+
+      _fetchStories(); // Refresh stories
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload story: $e')),
+      );
+    }
   }
+}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.teal.shade700,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                // Upper bar (your existing work)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Walcoins
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Walcoins",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(
-                            height: 40,
-                            width: 40,
-                            child: Image.asset(
-                              'assets/icons/coin.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                          Text(
-                            "00.00",
-                            style: TextStyle(
-                              color: Colors.yellowAccent,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+            // Top Bar
+            _buildTopBar(),
 
-                      // Logo
-                      const CircleAvatar(
-                        radius: 30,
-                        backgroundImage: AssetImage('assets/images/logo.png'),
-                      ),
+            const SizedBox(height: 16),
 
-                      // Profile
-                      StreamBuilder<DocumentSnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(FirebaseAuth.instance.currentUser!.uid)
-                            .snapshots(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const CircularProgressIndicator();
-                          }
-
-                          if (snapshot.hasError) {
-                            return Text('Error: ${snapshot.error}');
-                          }
-
-                          if (!snapshot.hasData || !snapshot.data!.exists) {
-                            return const Text('No user data');
-                          }
-
-                          // Get the username and avatar from Firestore
-                          String username = snapshot.data!['username'] ?? 'No Username';
-                          String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png';
-
-                          return Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                          InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  transitionDuration: const Duration(milliseconds: 300),
-                                  reverseTransitionDuration: const Duration(milliseconds: 300),
-                                  pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const Challenges()),
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                    final easeOutCurve = Curves.easeOut;
-                                    final slideInAnimation = Tween<Offset>(
-                                      begin: const Offset(0, 1),
-                                      end: Offset.zero,
-                                    ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
-
-                                    return SlideTransition(
-                                      position: slideInAnimation,
-                                      child: child,
-                                    );
-                                  },
-                                ),
-                              );
-                            },
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundColor: Colors.white,
-                              backgroundImage: AssetImage(avatarPath), // Dynamically set the avatar from Firestore
-                            ),
-                          ),
-                              const SizedBox(height: 8),
-                              Text(
-                                username,
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Search Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 5,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: "Search users by username",
-                        border: InputBorder.none,
-                        icon: Icon(Icons.search, color: Colors.grey.shade700),
-                      ),
-                      onChanged: (value) {
-                        _searchUsers(value.trim());
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Search Results
-                Expanded(
-                  child: _isSearching
-                      ? (_searchResults.isEmpty
-                          ? Center(
-                              child: Text(
-                                "No users found",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: _searchResults.length,
-                              itemBuilder: (context, index) {
-                                final user = _searchResults[index];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundImage: AssetImage(user['avatar']),
-                                  ),
-                                  title: Text(
-                                    user['username'],
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  onTap: () {
-                                    // Navigate to user's profile or perform an action
-                                    print("Selected: ${user['username']}");
-                                  },
-                                );
-                              },
-                            ))
-                      : Container(),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-
-      // Bottom Navigation Bar (your existing code)
-      bottomNavigationBar: Container(
-        height: 60,
-        decoration: const BoxDecoration(
-          color: Color(0xFF004D40),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _NavButton(
-              imagePath: 'assets/icons/home_nav.png',
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (context, animation, secondaryAnimation) => const HomePage(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const curve = Curves.easeOut;
-                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
-
-                      return SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
-                            .animate(curvedAnimation),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _NavButton(
-              imagePath: 'assets/icons/shop_nav.png',
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (context, animation, secondaryAnimation) => const StorePage(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const curve = Curves.easeOut;
-                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
-
-                      return SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
-                            .animate(curvedAnimation),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _NavButton(
-              imagePath: 'assets/icons/target_nav.png',
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (context, animation, secondaryAnimation) => const Challenges(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const curve = Curves.easeOut;
-                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
-
-                      return SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
-                            .animate(curvedAnimation),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _NavButton(
-              imagePath: 'assets/icons/friend_nav.png',
-              onTap: () {
-                // Placeholder for friend navigation
-              },
-            ),
+            // Stories Row
+            _buildStoriesRow(),
           ],
         ),
       ),
     );
   }
-}
 
-// NavButton Widget
-class _NavButton extends StatelessWidget {
-  final String imagePath;
-  final VoidCallback onTap;
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildWalcoins(),
+          const CircleAvatar(
+            radius: 30,
+            backgroundImage: AssetImage('assets/images/logo.png'),
+          ),
+          _buildProfile(),
+        ],
+      ),
+    );
+  }
 
-  const _NavButton({Key? key, required this.imagePath, required this.onTap}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
+  Widget _buildWalcoins() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Walcoins",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        child: Center(
+        SizedBox(
+          height: 40,
+          width: 40,
           child: Image.asset(
-            imagePath,
-            width: 40,
-            height: 40,
+            'assets/icons/coin.png',
             fit: BoxFit.contain,
           ),
         ),
-      ),
+        Text(
+          "00.00",
+          style: TextStyle(
+            color: Colors.yellowAccent,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfile() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(_auth.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return Text('No user data');
+        }
+
+        String username = snapshot.data!['username'] ?? 'No Username';
+        String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png';
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            InkWell(
+              onTap: () {
+                // Navigate to Profile
+              },
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white,
+                backgroundImage: AssetImage(avatarPath),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              username,
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStoriesRow() {
+    return Column(
+      children: [
+        // Line above stories
+        const Divider(
+          color: Colors.black,
+          thickness: 1, // Thin line
+        ),
+        const SizedBox(height: 8), // Add some spacing
+
+        // Stories Row
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              // Camera Button
+              GestureDetector(
+                onTap: _uploadStory,
+                child: Container(
+                  width: 59,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF004D40),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Image.asset(
+                    'assets/icons/camera.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Stories
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: stories.map((story) {
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => StoryViewPage(
+                                stories: stories,
+                                initialIndex: stories.indexOf(story),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: CircleAvatar(
+                            radius: 29.5,
+                            backgroundImage: NetworkImage(story['storyUrl']),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8), // Add some spacing
+
+        // Line below stories
+        const Divider(
+          color: Colors.black,
+          thickness: 1, // Thin line
+        ),
+      ],
     );
   }
 }

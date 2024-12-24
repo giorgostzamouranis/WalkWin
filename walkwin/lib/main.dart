@@ -12,6 +12,7 @@ import 'screens/friends_page.dart';
 import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
+import 'screens/story_view_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,10 @@ class MyApp extends StatelessWidget {
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
         '/friends': (context) => const FriendsPage(),
+        '/view_story': (context) => StoryViewPage(
+              stories: [], // Default empty list; update during runtime.
+              initialIndex: 0, // Default to the first story.
+            ),
         '/signin': (context) => const SignIn(),
         '/signup': (context) => const SignUpPage(),
         '/stepGoals': (context) => const StepGoalsPage(),
