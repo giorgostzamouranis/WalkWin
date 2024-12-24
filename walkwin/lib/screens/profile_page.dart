@@ -2,9 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'welcome_page.dart'; 
+import 'change_step_goals_page.dart';
 
 class Profile extends StatefulWidget {
-  const Profile({Key? key}) : super(key: key);
+  final Widget returnPage; // The page to return to
+
+  const Profile({Key? key, required this.returnPage}) : super(key: key);
 
   @override
   _ProfileState createState() => _ProfileState();
@@ -48,7 +51,7 @@ class _ProfileState extends State<Profile> {
                   size: 40,
                 ),
                 onPressed: () {
-                  Navigator.pop(context); // Navigate back
+                  Navigator.pop(context); // Go back to the previous page in the stack
                 },
               ),
             ),
@@ -300,7 +303,28 @@ class _ProfileState extends State<Profile> {
                       width: MediaQuery.of(context).size.width,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              transitionDuration: const Duration(milliseconds: 300),
+                              pageBuilder: (context, animation, secondaryAnimation) =>
+                                  ChangeStepGoalsPage(returnPage: widget), // Use 'widget' here
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                final easeOutCurve = Curves.easeOut;
+                                final slideInAnimation = Tween<Offset>(
+                                  begin: const Offset(1, 0), // Start from the right
+                                  end: Offset.zero, // Move to the original position
+                                ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
+
+                                return SlideTransition(
+                                  position: slideInAnimation,
+                                  child: child,
+                                );
+                              },
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF004D40),
                           shape: RoundedRectangleBorder(

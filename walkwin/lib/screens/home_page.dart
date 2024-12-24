@@ -115,7 +115,23 @@ class HomePage extends StatelessWidget {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => Profile()), // Navigate to profile page
+                                PageRouteBuilder(
+                                  transitionDuration: const Duration(milliseconds: 300),
+                                  reverseTransitionDuration: const Duration(milliseconds: 300),
+                                  pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const HomePage()),
+                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                    final easeOutCurve = Curves.easeOut;
+                                    final slideInAnimation = Tween<Offset>(
+                                      begin: const Offset(0, 1), // Start from below
+                                      end: Offset.zero, // Move to original position
+                                    ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
+
+                                    return SlideTransition(
+                                      position: slideInAnimation,
+                                      child: child,
+                                    );
+                                  },
+                                ),
                               );
                             },
                             child: CircleAvatar(

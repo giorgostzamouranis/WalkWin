@@ -9,6 +9,8 @@ import 'screens/sign_up_page.dart';
 import 'screens/store_page.dart';
 import 'screens/challenges_page.dart';
 import 'screens/profile_page.dart';
+import 'screens/step_goals_page.dart';
+import 'screens/change_step_goals_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,10 +28,9 @@ void main() async {
         measurementId: "G-7R8J4RJMP2",
       ),
     );
-    
-  //Else if android 
   } else {
-    await Firebase.initializeApp(); // Default for mobile platforms
+    // Default for mobile platforms
+    await Firebase.initializeApp();
   }
 
   runApp(
@@ -59,9 +60,9 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomePage(),
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
-        '/profile': (context) => const Profile(),
         '/signin': (context) => const SignIn(),
         '/signup': (context) => const SignUpPage(),
+        '/stepGoals': (context) => const StepGoalsPage(),
       },
     );
   }

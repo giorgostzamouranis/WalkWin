@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';  // Import Firestore
-import 'home_page.dart';
+// import 'home_page.dart';
+import 'step_goals_page.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
@@ -57,7 +58,7 @@ class _SignUpPageState extends State<SignUpPage> {
       // Navigate to the home page
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(builder: (context) => const StepGoalsPage()),
       );
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? 'An error occurred during sign up.');

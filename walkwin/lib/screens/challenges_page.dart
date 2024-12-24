@@ -137,7 +137,23 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => Profile()), // Navigate to profile page
+                                PageRouteBuilder(
+                                  transitionDuration: const Duration(milliseconds: 300),
+                                  reverseTransitionDuration: const Duration(milliseconds: 300),
+                                  pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const Challenges()),
+                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                    final easeOutCurve = Curves.easeOut;
+                                    final slideInAnimation = Tween<Offset>(
+                                      begin: const Offset(0, 1),
+                                      end: Offset.zero,
+                                    ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
+
+                                    return SlideTransition(
+                                      position: slideInAnimation,
+                                      child: child,
+                                    );
+                                  },
+                                ),
                               );
                             },
                             child: CircleAvatar(

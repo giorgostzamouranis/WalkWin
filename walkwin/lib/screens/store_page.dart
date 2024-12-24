@@ -327,20 +327,21 @@ class StorePage extends StatelessWidget {
                             backgroundImage: const AssetImage('assets/images/profile.png'),
                             child: GestureDetector(
                               onTap: () {
-                                print("Profile icon tapped"); // Debugging print statement
                                 Navigator.push(
                                   context,
                                   PageRouteBuilder(
                                     transitionDuration: const Duration(milliseconds: 300),
-                                    pageBuilder: (context, animation, secondaryAnimation) => const Profile(),
+                                    reverseTransitionDuration: const Duration(milliseconds: 300),
+                                    pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const StorePage()),
                                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                      final curvedAnimation = CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.easeOut,
-                                      );
+                                      final easeOutCurve = Curves.easeOut;
+                                      final slideInAnimation = Tween<Offset>(
+                                        begin: const Offset(0, 1),
+                                        end: Offset.zero,
+                                      ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
 
-                                      return FadeTransition(
-                                        opacity: curvedAnimation,
+                                      return SlideTransition(
+                                        position: slideInAnimation,
                                         child: child,
                                       );
                                     },
