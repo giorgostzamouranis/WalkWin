@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'store_page.dart';
 import 'profile_page.dart';
 import 'home_page.dart';
+import 'friends_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -571,7 +572,30 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
               },
             ),
             _NavButton(imagePath: 'assets/icons/target_nav.png', onTap: () {}),
-            _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
+            _NavButton(imagePath: 'assets/icons/friend_nav.png',
+             onTap: ()
+             {
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const FriendsPage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+             
           ],
         ),
       ),

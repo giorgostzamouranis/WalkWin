@@ -8,6 +8,7 @@ import 'screens/sign_in_page.dart';
 import 'screens/sign_up_page.dart';
 import 'screens/store_page.dart';
 import 'screens/challenges_page.dart';
+import 'screens/friends_page.dart';
 import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
@@ -60,6 +61,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomePage(),
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
+        '/friends': (context) => const FriendsPage(),
         '/signin': (context) => const SignIn(),
         '/signup': (context) => const SignUpPage(),
         '/stepGoals': (context) => const StepGoalsPage(),
