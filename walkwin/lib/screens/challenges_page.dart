@@ -53,6 +53,9 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+
     return Scaffold(
       backgroundColor: Colors.teal.shade700,
       body: SafeArea(
@@ -89,13 +92,39 @@ class _ChallengesState extends State<Challenges> with SingleTickerProviderStateM
                             fit: BoxFit.contain,  
                           ),
                       ),
-                          Text(
-                            "00.00",
-                            style: TextStyle(
-                              color: Colors.yellowAccent,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                      
+                          // StreamBuilder to get coins from Firestore
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(userId)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return CircularProgressIndicator();
+                              }
+
+                              if (snapshot.hasError) {
+                                return Text('Error: ${snapshot.error}');
+                              }
+
+                              if (snapshot.hasData) {
+                                var userData = snapshot.data!;
+                                // Fetch the coins field from the document
+                                double coins = userData['coins'] ?? 0.0;
+
+                                return Text(
+                                  coins.toStringAsFixed(2), // Display with 2 decimal places
+                                  style: TextStyle(
+                                    color: Colors.yellowAccent,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                );
+                              } else {
+                                return Text('No Data');
+                              }
+                            },
                           ),
                         ],
                       ),

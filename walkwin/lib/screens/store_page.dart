@@ -165,6 +165,9 @@ class StorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+final userId = FirebaseAuth.instance.currentUser?.uid;
+
+
     return Scaffold(
       backgroundColor: Colors.teal.shade700,
       body: LayoutBuilder(
@@ -282,38 +285,66 @@ class StorePage extends StatelessWidget {
                   ),
                 ),
               ),
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  color: Colors.teal.shade700,
-                  height: 100,
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            "Walcoins",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
+Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: Colors.teal.shade700,
+                height: 100,
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Walcoins Section
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Walcoins",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
                           ),
-                          Text(
-                            "00.00",
-                            style: TextStyle(
-                              color: Colors.yellowAccent,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        // StreamBuilder to get coins from Firestore
+                        StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(userId)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return CircularProgressIndicator();
+                            }
+
+                            if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}', style: TextStyle(color: Colors.white));
+                            }
+
+                            if (snapshot.hasData) {
+                              var userData = snapshot.data!;
+                              // Fetch the coins field from the document
+                              double coins = userData['coins'] ?? 0.0;
+
+                              return Text(
+                                coins.toStringAsFixed(2), // Display with 2 decimal places
+                                style: TextStyle(
+                                  color: Colors.yellowAccent,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            } else {
+                              return Text('No Data', style: TextStyle(color: Colors.white));
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+
+                      //Logo
                       const CircleAvatar(
                         radius: 30,
                         backgroundImage: AssetImage('assets/images/logo.png'),

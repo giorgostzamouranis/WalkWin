@@ -51,18 +51,19 @@ class _SignUpPageState extends State<SignUpPage> {
       final month = "${now.year}-${now.month}";
 
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
-        'email': email,
-        'username': username,
-        'avatar': 'assets/images/Avatar1.png',
-        'createdAt': FieldValue.serverTimestamp(),
-        'dailySteps': 0,
-        'weeklySteps': 0,
-        'monthlySteps': 0,
-        'lastDailyReset': today,
-        'lastWeeklyReset': weekOfYear,
-        'lastMonthlyReset': month,
-        'friends': [], // Initialize an empty list of friends
-      });
+  'email': email,
+  'username': username,
+  'avatar': 'assets/images/Avatar1.png',
+  'createdAt': FieldValue.serverTimestamp(),
+  'dailySteps': 0,
+  'weeklySteps': 0,
+  'monthlySteps': 0,
+  'lastDailyReset': today,
+  'lastWeeklyReset': weekOfYear,
+  'lastMonthlyReset': month,
+  'friends': [], // Initialize an empty list of friends
+  'coins': 5.0, 
+});
 
 
       _showSuccess('Account created successfully!');

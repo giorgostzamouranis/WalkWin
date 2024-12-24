@@ -168,37 +168,66 @@ Future<void> _searchUser(String query) async {
     );
   }
 
-  Widget _buildWalcoins() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Walcoins",
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+
+Widget _buildWalcoins() {
+  // Get the current user's ID
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        "Walcoins",
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
         ),
-        SizedBox(
-          height: 40,
-          width: 40,
-          child: Image.asset(
-            'assets/icons/coin.png',
-            fit: BoxFit.contain,
-          ),
+      ),
+      SizedBox(
+        height: 40,
+        width: 40,
+        child: Image.asset(
+          'assets/icons/coin.png',
+          fit: BoxFit.contain,
         ),
-        Text(
-          "00.00",
-          style: TextStyle(
-            color: Colors.yellowAccent,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+      // StreamBuilder to listen to the coins value in Firestore
+      StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CircularProgressIndicator();
+          }
+
+          if (snapshot.hasError) {
+            return Text('Error: ${snapshot.error}');
+          }
+
+          if (snapshot.hasData) {
+            var userData = snapshot.data!;
+            // Get the coins from Firestore
+            double coins = userData['coins'] ?? 0.0;
+
+            return Text(
+              coins.toStringAsFixed(2), // Display coins with two decimal points
+              style: TextStyle(
+                color: Colors.yellowAccent,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          } else {
+            return Text('No Data');
+          }
+        },
+      ),
+    ],
+  );
+}
 
   Widget _buildProfile() {
     return StreamBuilder<DocumentSnapshot>(
@@ -450,7 +479,7 @@ Widget _buildSearchResults() {
 
                     return SlideTransition(
                       position: Tween<Offset>(
-                        begin: const Offset(1, 0),
+                        begin: const Offset(-1, 0),
                         end: Offset.zero,
                       ).animate(curvedAnimation),
                       child: child,
