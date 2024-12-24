@@ -61,7 +61,9 @@ class _SignUpPageState extends State<SignUpPage> {
         'lastDailyReset': today,
         'lastWeeklyReset': weekOfYear,
         'lastMonthlyReset': month,
+        'friends': [], // Initialize an empty list of friends
       });
+
 
       _showSuccess('Account created successfully!');
 

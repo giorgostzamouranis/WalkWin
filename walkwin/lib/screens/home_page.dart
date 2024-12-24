@@ -6,6 +6,7 @@ import 'package:pedometer/pedometer.dart';
 import 'store_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
+import 'friends_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -300,8 +301,28 @@ class _HomePageState extends State<HomePage> {
           ),
           _NavButton(
             imagePath: 'assets/icons/friend_nav.png',
-            onTap: () {},
-          ),
+           onTap: ()
+             {
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const FriendsPage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
