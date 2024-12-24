@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';  // Import Firestore
-// import 'home_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'step_goals_page.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -18,14 +17,14 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();  // Controller for username
+  final TextEditingController _usernameController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   void _signUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
-    final username = _usernameController.text.trim();  // Get the username
+    final username = _usernameController.text.trim();
 
     if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || username.isEmpty) {
       _showError('Please fill in all fields.');
@@ -44,18 +43,29 @@ class _SignUpPageState extends State<SignUpPage> {
         password: password,
       );
 
-      // Save the username, user data, and default avatar in Firestore
-      String userId = userCredential.user!.uid;  // Get user ID from Firebase Auth
+      // Save user data in Firestore with basic initialization
+      String userId = userCredential.user!.uid;
+      final now = DateTime.now();
+      final today = "${now.year}-${now.month}-${now.day}";
+      final weekOfYear = int.parse((now.weekday / 7).ceil().toString());
+      final month = "${now.year}-${now.month}";
+
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'email': email,
-        'username': username,  // Store the username
-        'avatar': 'assets/images/Avatar1.png',  // Default avatar path
-        'createdAt': FieldValue.serverTimestamp(),  // Store account creation time
+        'username': username,
+        'avatar': 'assets/images/Avatar1.png',
+        'createdAt': FieldValue.serverTimestamp(),
+        'dailySteps': 0,
+        'weeklySteps': 0,
+        'monthlySteps': 0,
+        'lastDailyReset': today,
+        'lastWeeklyReset': weekOfYear,
+        'lastMonthlyReset': month,
       });
 
       _showSuccess('Account created successfully!');
 
-      // Navigate to the home page
+      // Navigate to the StepGoalsPage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const StepGoalsPage()),
@@ -66,11 +76,11 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.red))));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.red))));
   }
 
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: TextStyle(color: Colors.green))));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.green))));
   }
 
   @override
@@ -89,7 +99,7 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 40), // Spacing for status bar
+                const SizedBox(height: 40),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Image.asset(
@@ -98,27 +108,26 @@ class _SignUpPageState extends State<SignUpPage> {
                     height: 28,
                   ),
                 ),
-                SizedBox(height: 30),
-                Text(
+                const SizedBox(height: 30),
+                const Text(
                   'Create account',
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
-                SizedBox(height: 30),
-                
-                // Add Username input box
+                const SizedBox(height: 30),
+
                 _buildInputBox(
                   controller: _usernameController,
                   hintText: 'Username',
                   obscureText: false,
                 ),
-                SizedBox(height: 15),
+                const SizedBox(height: 15),
 
                 _buildInputBox(
                   controller: _emailController,
                   hintText: 'Email address',
                   obscureText: false,
                 ),
-                SizedBox(height: 15),
+                const SizedBox(height: 15),
 
                 _buildInputBox(
                   controller: _passwordController,
@@ -130,7 +139,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     });
                   },
                 ),
-                SizedBox(height: 15),
+                const SizedBox(height: 15),
 
                 _buildInputBox(
                   controller: _confirmPasswordController,
@@ -142,7 +151,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     });
                   },
                 ),
-                SizedBox(height: 30),
+                const SizedBox(height: 30),
 
                 Center(
                   child: SizedBox(
@@ -154,7 +163,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         backgroundColor: Colors.black,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Create account',
                         style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
@@ -185,7 +194,7 @@ class _SignUpPageState extends State<SignUpPage> {
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 5,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -200,7 +209,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: InputDecoration(
                   hintText: hintText,
                   border: InputBorder.none,
-                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey),
+                  hintStyle: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
               ),
             ),

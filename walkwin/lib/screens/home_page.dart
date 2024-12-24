@@ -1,39 +1,110 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart'; // For date and time handling
+import 'package:pedometer/pedometer.dart';
 import 'store_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-
-
-
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
-  Future<void> _openMaps(BuildContext context) async {
-    final geoUrl = Uri.parse('geo:0,0');
-    if (await canLaunchUrl(geoUrl)) {
-      await launchUrl(geoUrl, mode: LaunchMode.externalApplication);
-    } else {
-      final googleMapsUrl = Uri.parse('comgooglemaps://');
-      if (await canLaunchUrl(googleMapsUrl)) {
-        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-      } else {
-        final webUrl = Uri.parse('https://www.google.com/maps');
-        if (await canLaunchUrl(webUrl)) {
-          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open maps.')),
-          );
-        }
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  int _stepsToday = 0;
+  int _weeklySteps = 0;
+  int _monthlySteps = 0;
+  int _dailyGoal = 5000;
+  double _progressToday = 0.0;
+  late Stream<StepCount> _stepCountStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeSteps();
+  }
+
+  Future<void> _initializeSteps() async {
+    await _resetStepCountersIfNeeded(); // Reset steps if needed
+
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId != null) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+      if (userDoc.exists) {
+        setState(() {
+          _dailyGoal = userDoc['dailyGoal'] ?? 5000;
+          _stepsToday = userDoc['stepsToday'] ?? 0;
+          _weeklySteps = userDoc['stepsWeek'] ?? 0;
+          _monthlySteps = userDoc['stepsMonth'] ?? 0;
+          _progressToday = _stepsToday / _dailyGoal;
+        });
       }
+
+      _stepCountStream = Pedometer.stepCountStream;
+      _stepCountStream.listen((StepCount event) {
+        _updateSteps(event.steps);
+      });
     }
   }
 
-///////////////// Upper Bar //////////////
+  Future<void> _resetStepCountersIfNeeded() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    final now = DateTime.now();
+    final today = DateFormat('yyyy-MM-dd').format(now);
+    final weekOfYear = int.parse(DateFormat('w').format(now));
+    final month = DateFormat('yyyy-MM').format(now);
+
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    if (!userDoc.exists) return;
+
+    Map<String, dynamic> updates = {};
+
+    // Daily Reset
+    if (userDoc['lastDailyReset'] != today) {
+      updates['stepsToday'] = 0;
+      updates['lastDailyReset'] = today;
+    }
+
+    // Weekly Reset
+    if (userDoc['lastWeeklyReset'] != weekOfYear.toString()) {
+      updates['stepsWeek'] = 0;
+      updates['lastWeeklyReset'] = weekOfYear.toString();
+    }
+
+    // Monthly Reset
+    if (userDoc['lastMonthlyReset'] != month) {
+      updates['stepsMonth'] = 0;
+      updates['lastMonthlyReset'] = month;
+    }
+
+    if (updates.isNotEmpty) {
+      await FirebaseFirestore.instance.collection('users').doc(userId).update(updates);
+    }
+  }
+
+  Future<void> _updateSteps(int steps) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (userId != null) {
+      setState(() {
+        _stepsToday = steps;
+        _progressToday = _stepsToday / _dailyGoal;
+      });
+
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'stepsToday': _stepsToday,
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,207 +113,44 @@ class HomePage extends StatelessWidget {
         child: Column(
           children: [
             // Top Section
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Walcoins
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Walcoins",
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(
-                        height: 40,
-                        width: 40,
-                        child: Image.asset(
-                          'assets/icons/coin.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      Text(
-                        "00.00",
-                        style: TextStyle(
-                          color: Colors.yellowAccent,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Logo
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundImage: AssetImage('assets/images/logo.png'),
-                  ),
-
-                  // Profile
-                  StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(FirebaseAuth.instance.currentUser!.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return CircularProgressIndicator(); // Show loading spinner while data is loading
-                      }
-
-                      if (snapshot.hasError) {
-                        return Text('Error: ${snapshot.error}');
-                      }
-
-                      if (!snapshot.hasData || !snapshot.data!.exists) {
-                        return Text('No user data');
-                      }
-
-                      // Get the username and avatar from Firestore
-                      String username = snapshot.data!['username'] ?? 'No Username';
-                      String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png'; // Default avatar if none exists
-
-                      return Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                  transitionDuration: const Duration(milliseconds: 300),
-                                  reverseTransitionDuration: const Duration(milliseconds: 300),
-                                  pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const HomePage()),
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                    final easeOutCurve = Curves.easeOut;
-                                    final slideInAnimation = Tween<Offset>(
-                                      begin: const Offset(0, 1), // Start from below
-                                      end: Offset.zero, // Move to original position
-                                    ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
-
-                                    return SlideTransition(
-                                      position: slideInAnimation,
-                                      child: child,
-                                    );
-                                  },
-                                ),
-                              );
-                            },
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundColor: Colors.white,
-                              backgroundImage: AssetImage(avatarPath), // Dynamically set the avatar from Firestore
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            username,  // Display the username dynamically
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-
-                ],
-              ),
-            ),
+            _buildTopBar(),
             const SizedBox(height: 16),
 
-            ///////////// Buttons Row //////////////////
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.yellow,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    ),
-                    icon: Image.asset(
-                      'assets/images/bolt.png',
-                      width: 24,
-                      height: 24,
-                    ),
-                    label: const Text(
-                      "BOOST STEPS X2",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: ElevatedButton(
-                        onPressed: () => _openMaps(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00E6B0),
-                          fixedSize: const Size(60, 60),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: EdgeInsets.zero,
-                        ),
-                        child: Image.asset(
-                          'assets/icons/map.png',
-                          width: 50,
-                          height: 50,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
             // Steps and Circular Widgets
             Expanded(
               child: Column(
                 children: [
                   const SizedBox(height: 30),
-                  const CircularStepsWidget(
+                  CircularStepsWidget(
                     title: "Steps Today",
-                    steps: "7.586",
+                    steps: _stepsToday.toString(),
                     size: 270,
                     titleFontSize: 20,
                     stepsFontSize: 30,
                     iconSize: 50,
+                    progress: _progressToday.clamp(0.0, 1.0),
                   ),
                   const SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: const [
+                    children: [
                       CircularStepsWidget(
                         title: "This Week",
-                        steps: "13.789",
+                        steps: _weeklySteps.toString(),
                         size: 180,
                         titleFontSize: 16,
                         stepsFontSize: 24,
                         iconSize: 40,
+                        progress: (_weeklySteps / (_dailyGoal * 7)).clamp(0.0, 1.0),
                       ),
                       CircularStepsWidget(
                         title: "This Month",
-                        steps: "56.672",
+                        steps: _monthlySteps.toString(),
                         size: 140,
                         titleFontSize: 12,
                         stepsFontSize: 18,
                         iconSize: 30,
+                        progress: (_monthlySteps / (_dailyGoal * 30)).clamp(0.0, 1.0),
                       ),
                     ],
                   ),
@@ -253,86 +161,173 @@ class HomePage extends StatelessWidget {
         ),
       ),
 
-      /////////Navigation bar////////////
+      // Bottom Navigation Bar
+      bottomNavigationBar: _buildBottomNavBar(context),
+    );
+  }
 
-      bottomNavigationBar: Container(
-        height: 60,
-        decoration: const BoxDecoration(
-          color: Color(0xFF004D40),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildWalcoins(),
+          const CircleAvatar(
+            radius: 30,
+            backgroundImage: AssetImage('assets/images/logo.png'),
+          ),
+          _buildProfile(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWalcoins() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Walcoins",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _NavButton(
-              imagePath: 'assets/icons/home_nav.png',
-              onTap: () {},
-            ),
-            _NavButton(
-              imagePath: 'assets/icons/shop_nav.png',
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (context, animation, secondaryAnimation) => const StorePage(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const curve = Curves.easeOut;
-                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
-
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(1, 0),
-                          end: Offset.zero,
-                        ).animate(curvedAnimation),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _NavButton(imagePath: 'assets/icons/target_nav.png', 
-              onTap: () {
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (context, animation, secondaryAnimation) => const  Challenges(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const curve = Curves.easeOut;
-                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
-
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(1, 0),
-                          end: Offset.zero,
-                        ).animate(curvedAnimation),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-            _NavButton(imagePath: 'assets/icons/friend_nav.png', onTap: () {}),
-          ],
+        SizedBox(
+          height: 40,
+          width: 40,
+          child: Image.asset(
+            'assets/icons/coin.png',
+            fit: BoxFit.contain,
+          ),
         ),
+        Text(
+          "00.00",
+          style: TextStyle(
+            color: Colors.yellowAccent,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfile() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
+
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return Text('No user data');
+        }
+
+        String username = snapshot.data!['username'] ?? 'No Username';
+        String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png';
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 300),
+                    pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const HomePage()),
+                  ),
+                );
+              },
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white,
+                backgroundImage: AssetImage(avatarPath),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              username,
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomNavBar(BuildContext context) {
+    return Container(
+      height: 60,
+      decoration: const BoxDecoration(
+        color: Color(0xFF004D40),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _NavButton(
+            imagePath: 'assets/icons/home_nav.png',
+            onTap: () {},
+          ),
+          _NavButton(
+            imagePath: 'assets/icons/shop_nav.png',
+            onTap: () => _navigateTo(context, const StorePage()),
+          ),
+          _NavButton(
+            imagePath: 'assets/icons/target_nav.png',
+            onTap: () => _navigateTo(context, const Challenges()),
+          ),
+          _NavButton(
+            imagePath: 'assets/icons/friend_nav.png',
+            onTap: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateTo(BuildContext context, Widget page) {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 400),
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const curve = Curves.easeOut;
+          final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(curvedAnimation),
+            child: child,
+          );
+        },
       ),
     );
   }
 }
-
-
-
-
-
-
-
-
-
-/////////////////  Circular Widget  /////////////////
 
 class CircularStepsWidget extends StatelessWidget {
   final String title;
@@ -341,6 +336,7 @@ class CircularStepsWidget extends StatelessWidget {
   final double titleFontSize;
   final double stepsFontSize;
   final double iconSize;
+  final double progress;
 
   const CircularStepsWidget({
     Key? key,
@@ -350,6 +346,7 @@ class CircularStepsWidget extends StatelessWidget {
     this.titleFontSize = 14,
     this.stepsFontSize = 20,
     this.iconSize = 30,
+    required this.progress,
   }) : super(key: key);
 
   @override
@@ -372,7 +369,7 @@ class CircularStepsWidget extends StatelessWidget {
             width: size,
             height: size,
             child: CircularProgressIndicator(
-              value: 0.7,
+              value: progress,
               color: const Color(0xFF00E6B0),
               strokeWidth: size * 0.08,
               backgroundColor: Colors.transparent,
@@ -412,13 +409,6 @@ class CircularStepsWidget extends StatelessWidget {
     );
   }
 }
-
-
-
-
-
-
-/////////////////  NavButton Widget  /////////////////
 
 class _NavButton extends StatelessWidget {
   final String imagePath;
