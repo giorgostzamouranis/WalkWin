@@ -103,6 +103,10 @@ class _HomePageState extends State<HomePage> {
       await FirebaseFirestore.instance.collection('users').doc(userId).update({
         'stepsToday': _stepsToday,
       });
+
+      // Check and update challenges based on the steps
+      await _checkAndUpdateChallenges(steps);
+
     }
   }
 
@@ -153,6 +157,28 @@ class _HomePageState extends State<HomePage> {
                         iconSize: 30,
                         progress: (_monthlySteps / (_dailyGoal * 30)).clamp(0.0, 1.0),
                       ),
+
+
+
+
+            /////////////////// TEST /////////////////
+
+             ///////////// Add this button below the CircularStepsWidget in the body section
+                      ElevatedButton(
+                        onPressed: () {
+                          incrementSteps(4000);  // Increase steps by 100
+                        },
+                        child: Text('Increase Steps by 4000'),
+                      ),
+
+
+
+
+
+
+
+
+
                     ],
                   ),
                 ],
@@ -376,7 +402,95 @@ Widget _buildWalcoins() {
       ),
     );
   }
+
+
+
+
+
+
+/////////// TEST INCREASE STEPS //////
+// Function to simulate step increment
+void incrementSteps(int incrementBy) async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId != null) {
+    // Get the current steps from Firestore
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+    int currentSteps = 0;
+    if (userDoc.exists) {
+      currentSteps = userDoc['dailySteps'] ?? 0;  // Get current steps from Firestore (default to 0 if not available)
+    }
+
+    // Increment the steps by the specified value
+    int newStepCount = currentSteps + incrementBy;
+
+    // Update the Firestore document with the new step count
+    await FirebaseFirestore.instance.collection('users').doc(userId).update({
+      'dailySteps': newStepCount,
+    });
+
+    // Update the local state to reflect the changes
+    setState(() {
+      _stepsToday = newStepCount;
+      _progressToday = _stepsToday / _dailyGoal;
+    });
+
+    // You can also call _checkAndUpdateChallenges here if you'd like to check and update challenges right after increasing the steps
+    await _checkAndUpdateChallenges(newStepCount);
+  }
 }
+
+
+
+
+
+
+
+
+}
+
+
+
+////////////////////// This function checks the user's steps against the goals of their incomplete challenges. If the user meets the goal, it marks the challenge as completed and updates their total coins. /////////////////
+
+Future<void> _checkAndUpdateChallenges(int steps) async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+
+  if (userId == null) return;
+
+  final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+  if (!userDoc.exists) return;
+
+  // Check if the user has completed any challenges
+  final challengesSnapshot = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(userId)
+      .collection('challenges')
+      .where('completed', isEqualTo: false) // Only incomplete challenges
+      .get();
+
+  for (var doc in challengesSnapshot.docs) {
+    var challenge = doc.data();
+    if (steps >= challenge['goal']) {
+      // Mark challenge as completed
+      await doc.reference.update({
+        'completed': true,
+      });
+
+      // Add coins to user's total
+      double reward = challenge['reward'];
+      double currentCoins = userDoc['coins'] ?? 0.0;
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'coins': currentCoins + reward,
+      });
+    }
+  }
+}
+
+
+
+
 
 class CircularStepsWidget extends StatelessWidget {
   final String title;
@@ -496,3 +610,6 @@ class _NavButton extends StatelessWidget {
     );
   }
 }
+
+
+

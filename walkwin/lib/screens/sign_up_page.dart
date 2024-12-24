@@ -51,20 +51,22 @@ class _SignUpPageState extends State<SignUpPage> {
       final month = "${now.year}-${now.month}";
 
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
-  'email': email,
-  'username': username,
-  'avatar': 'assets/images/Avatar1.png',
-  'createdAt': FieldValue.serverTimestamp(),
-  'dailySteps': 0,
-  'weeklySteps': 0,
-  'monthlySteps': 0,
-  'lastDailyReset': today,
-  'lastWeeklyReset': weekOfYear,
-  'lastMonthlyReset': month,
-  'friends': [], // Initialize an empty list of friends
-  'coins': 5.0, 
-});
+        'email': email,
+        'username': username,
+        'avatar': 'assets/images/Avatar1.png',
+        'createdAt': FieldValue.serverTimestamp(),
+        'dailySteps': 0,
+        'weeklySteps': 0,
+        'monthlySteps': 0,
+        'lastDailyReset': today,
+        'lastWeeklyReset': weekOfYear,
+        'lastMonthlyReset': month,
+        'friends': [], // Initialize an empty list of friends
+        'coins': 5.0, 
+      });
 
+      // Add challenges to the newly created user
+      await addChallengeForUser(userId);
 
       _showSuccess('Account created successfully!');
 
@@ -84,6 +86,47 @@ class _SignUpPageState extends State<SignUpPage> {
 
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.green))));
+  }
+
+  Future<void> addChallengeForUser(String userId) async {
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+    final challenges = [
+      {
+        'title': 'Easy mission!',
+        'goal': 4000,
+        'reward': 5,
+        'completed': false,
+      },
+      {
+        'title': 'Try your limits!',
+        'goal': 8000,
+        'reward': 15,
+        'completed': false,
+      },
+      {
+      'title': 'Not tired yet?',
+      'goal': 20000, 
+      'reward': 15, 
+      'completed': false,
+    },
+    {
+      'title': 'For brave ones!',
+      'goal': 40000, 
+      'reward': 20, 
+      'completed': false,
+    },
+    ];
+
+    // Add each challenge to the user's challenges sub-collection
+    for (var challenge in challenges) {
+      await _firestore.collection('users')
+          .doc(userId)  // Reference to the specific user
+          .collection('challenges')  // Sub-collection for challenges
+          .add(challenge);
+    }
+
+    print('Challenges added successfully!');
   }
 
   @override
