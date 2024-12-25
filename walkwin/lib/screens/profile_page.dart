@@ -99,7 +99,7 @@ class _ProfileState extends State<Profile> {
                   Padding(
                     padding: const EdgeInsets.only(left: 20.0),
                     child: Container(
-                      width: 180,
+                      width: 200,
                       height: 30,
                       child: ElevatedButton(
                         onPressed: () {
@@ -134,7 +134,7 @@ class _ProfileState extends State<Profile> {
             Align(
               alignment: Alignment.topRight,
               child: Padding(
-                padding: const EdgeInsets.only(top: 60.0, right: 20.0),
+                padding: const EdgeInsets.only(top: 45.0, right: 20.0),
                 child: Column(
                   children: [
                     // Fetch username from Firestore

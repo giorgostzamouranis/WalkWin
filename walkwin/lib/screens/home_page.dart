@@ -160,7 +160,7 @@ class _HomePageState extends State<HomePage> {
 
 
 
-
+/*
             /////////////////// TEST /////////////////
 
              ///////////// Add this button below the CircularStepsWidget in the body section
@@ -172,7 +172,7 @@ class _HomePageState extends State<HomePage> {
                       ),
 
 
-
+*/
 
 
 
@@ -406,7 +406,7 @@ Widget _buildWalcoins() {
 
 
 
-
+/*
 
 /////////// TEST INCREASE STEPS //////
 // Function to simulate step increment
@@ -441,7 +441,7 @@ void incrementSteps(int incrementBy) async {
 }
 
 
-
+*/
 
 
 
