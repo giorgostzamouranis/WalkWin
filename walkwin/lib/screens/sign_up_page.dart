@@ -65,6 +65,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'lastWeeklyReset': weekOfYear,
         'lastMonthlyReset': month,
         'friends': [], // Initialize an empty list of friends
+        'incomingFriendRequests': [], // Initialize an empty list of incoming friend requests
         'coins': 5.0, 
       });
 

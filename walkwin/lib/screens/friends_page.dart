@@ -12,6 +12,7 @@ import 'challenges_page.dart';
 import 'search_friends_page.dart';
 import 'friends_profile_page.dart';
 import 'friends_list_page.dart';
+import 'incoming_friend_request_page.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart'; // Add the QR code scanning library
 import 'package:flutter/widgets.dart';
 
@@ -56,6 +57,21 @@ class _FriendsPageState extends State<FriendsPage> {
       });
     }
   }
+
+  Future<Map<String, dynamic>> fetchRequesterData(String uid) async {
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    if (doc.exists) {
+      return {
+        'username': doc['username'] ?? 'Unknown User',
+        'avatar': doc['avatar'] ?? 'assets/images/default_avatar.png',
+        'uid': uid,
+      };
+    } else {
+      throw Exception('User not found');
+    }
+  }
+
+
 
   Future<void> _fetchLeaderboardData() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -411,6 +427,76 @@ Widget _buildWalcoins() {
                   ),
                 ),
               ),
+
+              // Notification Button
+              GestureDetector(
+                onTap: () async {
+                  try {
+                    // Get the current logged-in user's UID
+                    final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
+
+                    // Fetch the current user's document
+                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserUid).get();
+
+                    if (userDoc.exists && userDoc['incomingFriendRequests'] != null && userDoc['incomingFriendRequests'].isNotEmpty) {
+                      // Get the first incoming friend request UID
+                      final requesterUid = userDoc['incomingFriendRequests'][0];
+
+                      // Fetch data for the requester
+                      final requesterData = await fetchRequesterData(requesterUid);
+
+                      // Navigate to Incoming Friend Request Page
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => IncomingFriendRequestPage(
+                            requesterData: requesterData,
+                          ),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            return SlideTransition(
+                              position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
+                              child: child,
+                            );
+                          },
+                          transitionDuration: const Duration(milliseconds: 800),
+                        ),
+                      );
+                    } else {
+                      // No incoming friend requests
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No incoming friend requests')),
+                      );
+                    }
+                  } catch (e) {
+                    // Handle errors
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error fetching friend requests: $e')),
+                    );
+                  }
+                },
+                child: Container(
+                  width: 59,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF004D40),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/icons/notification.png',
+                      width: 24,
+                      height: 24,
+                    ),
+                  ),
+                ),
+              ),
+
             ],
           ),
         ),
@@ -424,6 +510,7 @@ Widget _buildWalcoins() {
       ],
     );
   }
+
 
   Widget _buildSearchBar() {
     return GestureDetector(

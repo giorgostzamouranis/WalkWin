@@ -9,6 +9,7 @@ import 'screens/sign_up_page.dart';
 import 'screens/store_page.dart';
 import 'screens/challenges_page.dart';
 import 'screens/friends_page.dart';
+import 'screens/incoming_friend_request_page.dart';
 import 'screens/search_friends_page.dart';
 import 'screens/friends_profile_page.dart';
 import 'screens/friends_list_page.dart';
@@ -77,7 +78,17 @@ class MyApp extends StatelessWidget {
       },
       // Add onGenerateRoute for dynamic routing
       onGenerateRoute: (settings) {
-        if (settings.name == '/friendsprofilepage') {
+        if (settings.name == '/incomingFriendRequest') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          if (args == null || !args.containsKey('requesterData')) {
+            throw Exception("Missing requesterData for IncomingFriendRequestPage");
+          }
+          return MaterialPageRoute(
+            builder: (context) => IncomingFriendRequestPage(
+              requesterData: args['requesterData'],
+            ),
+          );
+        } else if (settings.name == '/friendsprofilepage') {
           final user = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
             builder: (context) => FriendsProfilePage(user: user),
@@ -93,6 +104,7 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 
 
 

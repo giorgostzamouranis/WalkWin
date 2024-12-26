@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'friends_list_page.dart';
 import 'friends_page.dart';
 
 class FriendsProfilePage extends StatefulWidget {
@@ -14,104 +13,59 @@ class FriendsProfilePage extends StatefulWidget {
 }
 
 class _FriendsProfilePageState extends State<FriendsProfilePage> {
-  bool _isAddingFriend = false; // To track if the friend is being added
+  bool _isSendingRequest = false; // To track if the friend request is being sent
 
-  Future<void> _addFriend() async {
+  Future<void> _sendFriendRequest() async {
     setState(() {
-      _isAddingFriend = true;
+      _isSendingRequest = true;
     });
 
     try {
+      // Get the logged-in user's UID and friend's UID
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
-      final friendId = widget.user['uid']; // Friend's UID
+      final friendId = widget.user['uid'];
+
+          // Debugging log
+      print('Current User ID: $currentUserId');
+      print('Friend ID: $friendId');
 
       if (friendId == null || currentUserId == friendId) {
-        return; // Do not add self as a friend or invalid ID
-      }
-
-      // Start a Firestore batch operation to ensure atomicity
-      final batch = FirebaseFirestore.instance.batch();
-
-      // Add the friend to the current user's friends list
-      final currentUserDoc = FirebaseFirestore.instance.collection('users').doc(currentUserId);
-      batch.update(currentUserDoc, {
-        'friends': FieldValue.arrayUnion([friendId]),
-      });
-
-      // Add the current user to the friend's friends list
-      final friendUserDoc = FirebaseFirestore.instance.collection('users').doc(friendId);
-      batch.update(friendUserDoc, {
-        'friends': FieldValue.arrayUnion([currentUserId]),
-      });
-
-      // Commit the batch
-      await batch.commit();
-
-      // Fetch the updated friends list for the current user
-      final currentUserSnapshot =
-          await FirebaseFirestore.instance.collection('users').doc(currentUserId).get();
-      final updatedFriends = List<String>.from(currentUserSnapshot['friends']);
-
-      // Wait for 1 second
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Navigate to FriendsListPage with updated friends list
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => FriendsListPage(
-              friends: updatedFriends.map((friendId) => {'uid': friendId}).toList(),
-              newFriendId: friendId,
-            ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 800),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid operation: Cannot send a request to yourself.')),
         );
+        return;
       }
-    } catch (e) {
+
+      // Reference to the friend's `friendRequests` sub-collection
+      final friendRequestsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(friendId)
+          .collection('friendRequests');
+
+      print('Sending friend request to Firestore...');
+      // Add the friend request
+      await friendRequestsCollection.add({
+        'from': currentUserId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      print('Friend request successfully written to Firestore!');
+
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding friend: $e')),
+        const SnackBar(content: Text('Friend request sent!')),
+      );
+    } catch (e) {
+      // Show error message if there's an issue
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending friend request: $e')),
       );
     } finally {
       setState(() {
-        _isAddingFriend = false;
+        _isSendingRequest = false;
       });
     }
   }
 
-
-
-  Future<List<Map<String, dynamic>>> _getFriendsList(String currentUserId) async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUserId)
-          .get();
-      final friendsIds = List<String>.from(snapshot.data()?['friends'] ?? []);
-
-      final friendsSnapshots = await Future.wait(
-        friendsIds.map((id) =>
-            FirebaseFirestore.instance.collection('users').doc(id).get()),
-      );
-
-      return friendsSnapshots
-          .where((snap) => snap.exists)
-          .map((snap) => {
-                'uid': snap.id,
-                'username': snap['username'] ?? 'Unknown',
-                'avatar': snap['avatar'] ?? 'assets/images/default_avatar.png',
-              })
-          .toList();
-    } catch (e) {
-      print('Error fetching friends list: $e');
-      return [];
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,18 +128,16 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
                   ),
                 ),
               ),
-              _isAddingFriend
-                  ? Image.asset(
-                      'assets/icons/check_small.png',
-                      width: 30,
-                      height: 30,
+              _isSendingRequest
+                  ? CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     )
                   : IconButton(
                       icon: const Icon(Icons.add_circle),
-                      onPressed: _isAddingFriend
+                      onPressed: _isSendingRequest
                           ? null
                           : () {
-                              _addFriend();
+                              _sendFriendRequest();
                             },
                     ),
             ],

@@ -1,11 +1,37 @@
 import 'package:flutter/material.dart';
 import 'search_friends_page.dart';
 
-class FriendsListPage extends StatelessWidget {
+class FriendsListPage extends StatefulWidget {
   final List<Map<String, dynamic>> friends;
   final String? newFriendId; // Optional new friend ID to highlight
 
   const FriendsListPage({Key? key, required this.friends, this.newFriendId}) : super(key: key);
+
+  @override
+  State<FriendsListPage> createState() => _FriendsListPageState();
+}
+
+class _FriendsListPageState extends State<FriendsListPage> {
+  late List<Map<String, dynamic>> friends; // Local copy of friends list
+  String? newFriendId; // Local state for newFriendId
+
+  @override
+  void initState() {
+    super.initState();
+    friends = List.from(widget.friends); // Copy the friends list
+    newFriendId = widget.newFriendId; // Initialize with the provided new friend ID
+  }
+
+  @override
+  void dispose() {
+    if (newFriendId != null) {
+      // Remove the "New!" indicator when the user exits the page
+      setState(() {
+        newFriendId = null;
+      });
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
