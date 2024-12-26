@@ -17,7 +17,7 @@ import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
 import 'screens/story_view_page.dart';
-
+import 'screens/challenge_friend_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -75,6 +75,7 @@ class MyApp extends StatelessWidget {
               initialIndex: 0, // Default to the first story.
             ),
         '/searchfriendspage': (context) => const SearchFriendsPage(),
+        '/challengefriend': (context) => const ChallengeFriendPage(),
       },
       // Add onGenerateRoute for dynamic routing
       onGenerateRoute: (settings) {

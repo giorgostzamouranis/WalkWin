@@ -16,7 +16,7 @@ import 'friends_list_page.dart';
 import 'incoming_friend_request_page.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart'; // Add the QR code scanning library
 import 'package:flutter/widgets.dart';
-
+import 'challenge_friend_page.dart';
 
 
 
@@ -714,18 +714,19 @@ Widget _buildWalcoins() {
       ],
     );
   }
-
+  
   // Method for building the action buttons
   Widget _buildActionButtons() {
     return Column(
       children: [
         _buildActionButton('Challenge Friends', 'assets/icons/globe.png', onTap: () {
-          // Add functionality for "Challenge Friends" here
-        }),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ChallengeFriendPage()),
+                ); 
+              }),
         const SizedBox(height: 10), // Space between buttons
-        _buildActionButton('Active Challenges', 'assets/icons/scanner.png', onTap: () {
-          // Add functionality for "Active Challenges" here
-        }),
+        _buildActionButton('Active Challenges', 'assets/icons/scanner.png', onTap: () {}),
         const SizedBox(height: 10), // Space between buttons
         _buildActionButton('Scan Friends', 'assets/icons/clock_forward.png', onTap: () {
           Navigator.of(context).push(
