@@ -67,6 +67,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'friends': [], // Initialize an empty list of friends
         'incomingFriendRequests': [], // Initialize an empty list of incoming friend requests
         'coins': 5.0, 
+        'challenges': [],
       });
 
       // Add challenges to the newly created user
@@ -92,46 +93,46 @@ class _SignUpPageState extends State<SignUpPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.green))));
   }
 
-  Future<void> addChallengeForUser(String userId) async {
-    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+Future<void> addChallengeForUser(String userId) async {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-    final challenges = [
-      {
-        'title': 'Easy mission!',
-        'goal': 4000,
-        'reward': 5,
-        'completed': false,
-      },
-      {
-        'title': 'Try your limits!',
-        'goal': 8000,
-        'reward': 15,
-        'completed': false,
-      },
-      {
+  final challenges = [
+    {
+      'title': 'Easy mission!',
+      'goal': 4000,
+      'reward': 5,
+      'completed': false,
+      'description': 'A gentle start! Perfect for beginners or a casual walk. Earn coins effortlessly while staying active.',
+    },
+    {
+      'title': 'Try your limits!',
+      'goal': 8000,
+      'reward': 10,
+      'completed': false,
+      'description': 'Step it up! A challenge designed to push you further and reward your growing determination.',
+    },
+    {
       'title': 'Not tired yet?',
       'goal': 20000, 
       'reward': 15, 
       'completed': false,
+      'description': 'Think you’ve got more in the tank? Take on this tougher challenge for bigger rewards and a stronger you!',
     },
     {
       'title': 'For brave ones!',
       'goal': 40000, 
       'reward': 20, 
       'completed': false,
+      'description': 'This is it—the ultimate test of willpower and stamina. Only the boldest will claim the reward. Are you ready?',
     },
-    ];
+  ];
 
-    // Add each challenge to the user's challenges sub-collection
-    for (var challenge in challenges) {
-      await _firestore.collection('users')
-          .doc(userId)  // Reference to the specific user
-          .collection('challenges')  // Sub-collection for challenges
-          .add(challenge);
-    }
-
-    print('Challenges added successfully!');
+  // Add challenges to Firestore under the user's challenges collection
+  for (var challenge in challenges) {
+    await _firestore.collection('users').doc(userId).collection('challenges').add(challenge);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

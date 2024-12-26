@@ -40,9 +40,9 @@ class _HomePageState extends State<HomePage> {
       if (userDoc.exists) {
         setState(() {
           _dailyGoal = userDoc['dailyGoal'] ?? 5000;
-          _stepsToday = userDoc['stepsToday'] ?? 0;
-          _weeklySteps = userDoc['stepsWeek'] ?? 0;
-          _monthlySteps = userDoc['stepsMonth'] ?? 0;
+          _stepsToday = userDoc['dailySteps'] ?? 0;
+          _weeklySteps = userDoc['weeklySteps'] ?? 0;
+          _monthlySteps = userDoc['monthlySteps'] ?? 0;
           _progressToday = _stepsToday / _dailyGoal;
         });
       }
@@ -54,61 +54,100 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _resetStepCountersIfNeeded() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
 
+Future<void> _resetStepCountersIfNeeded() async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) return;
+
+  final now = DateTime.now();
+  final today = DateFormat('yyyy-MM-dd').format(now);
+  final weekOfYear = int.parse(DateFormat('w').format(now));
+  final month = DateFormat('yyyy-MM').format(now);
+
+  final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+  if (!userDoc.exists) {
+    print('User document not found');
+    return;
+  }
+
+  Map<String, dynamic> updates = {};
+
+  // Daily Reset
+  if (userDoc['lastDailyReset'] != today) {
+    updates['dailySteps'] = 0;
+    updates['lastDailyReset'] = today;
+    print('Daily reset triggered');
+  }
+
+  // Weekly Reset
+  if (userDoc['lastWeeklyReset'] != weekOfYear) {
+    updates['weeklySteps'] = 0;
+    updates['lastWeeklyReset'] = weekOfYear;
+    print('Weekly reset triggered');
+  }
+
+  // Monthly Reset
+  if (userDoc['lastMonthlyReset'] != month) {
+    updates['monthlySteps'] = 0;
+    updates['lastMonthlyReset'] = month;
+    print('Monthly reset triggered');
+  }
+
+  if (updates.isNotEmpty) {
+    await FirebaseFirestore.instance.collection('users').doc(userId).update(updates);
+    print('Firestore update applied: $updates');
+  }
+}
+
+
+Future<void> _updateSteps(int steps) async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+
+  if (userId != null) {
     final now = DateTime.now();
-    final today = DateFormat('yyyy-MM-dd').format(now);
     final weekOfYear = int.parse(DateFormat('w').format(now));
     final month = DateFormat('yyyy-MM').format(now);
 
     final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    if (!userDoc.exists) return;
 
-    Map<String, dynamic> updates = {};
+    if (userDoc.exists) {
+      // Get current steps for today, week, and month from Firestore
+      int currentDailySteps = userDoc['dailySteps'] ?? 0;
+      int currentWeeklySteps = userDoc['weeklySteps'] ?? 0;
+      int currentMonthlySteps = userDoc['monthlySteps'] ?? 0;
 
-    // Daily Reset
-    if (userDoc['lastDailyReset'] != today) {
-      updates['stepsToday'] = 0;
-      updates['lastDailyReset'] = today;
-    }
+      // Calculate the new total for daily, weekly, and monthly steps
+      int newDailySteps = currentDailySteps + steps;
+      int newWeeklySteps = currentWeeklySteps + steps;
+      int newMonthlySteps = currentMonthlySteps + steps;
 
-    // Weekly Reset
-    if (userDoc['lastWeeklyReset'] != weekOfYear.toString()) {
-      updates['stepsWeek'] = 0;
-      updates['lastWeeklyReset'] = weekOfYear.toString();
-    }
+      print('Updating steps - Daily: $newDailySteps, Weekly: $newWeeklySteps, Monthly: $newMonthlySteps');
 
-    // Monthly Reset
-    if (userDoc['lastMonthlyReset'] != month) {
-      updates['stepsMonth'] = 0;
-      updates['lastMonthlyReset'] = month;
-    }
+      // Update Firestore with the new step counts
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'dailySteps': newDailySteps,
+        'weeklySteps': newWeeklySteps,
+        'monthlySteps': newMonthlySteps,
+      });
 
-    if (updates.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('users').doc(userId).update(updates);
-    }
-  }
+      print('Firestore update applied');
 
-  Future<void> _updateSteps(int steps) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-
-    if (userId != null) {
+      // Update local state
       setState(() {
-        _stepsToday = steps;
+        _stepsToday = newDailySteps;
+        _weeklySteps = newWeeklySteps;
+        _monthlySteps = newMonthlySteps;
         _progressToday = _stepsToday / _dailyGoal;
       });
 
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'stepsToday': _stepsToday,
-      });
-
-      // Check and update challenges based on the steps
-      await _checkAndUpdateChallenges(steps);
-
+      await _checkAndUpdateChallenges(newDailySteps);
     }
   }
+}
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +199,7 @@ class _HomePageState extends State<HomePage> {
 
 
 
-/*
+
             /////////////////// TEST /////////////////
 
              ///////////// Add this button below the CircularStepsWidget in the body section
@@ -172,7 +211,7 @@ class _HomePageState extends State<HomePage> {
                       ),
 
 
-*/
+
 
 
 
@@ -406,7 +445,7 @@ Widget _buildWalcoins() {
 
 
 
-/*
+
 
 /////////// TEST INCREASE STEPS //////
 // Function to simulate step increment
@@ -441,7 +480,7 @@ void incrementSteps(int incrementBy) async {
 }
 
 
-*/
+
 
 
 
@@ -470,23 +509,37 @@ Future<void> _checkAndUpdateChallenges(int steps) async {
       .where('completed', isEqualTo: false) // Only incomplete challenges
       .get();
 
+  if (challengesSnapshot.docs.isEmpty) {
+    print('No incomplete challenges found.');
+    return;
+  }
+
   for (var doc in challengesSnapshot.docs) {
     var challenge = doc.data();
-    if (steps >= challenge['goal']) {
+    print('Challenge Data: $challenge'); // Debugging print
+
+    // Ensure goal field exists
+    int goal = challenge['goal'] ?? 0;
+    if (steps >= goal) {
+      print('Challenge reached goal!'); // Debugging print
       // Mark challenge as completed
       await doc.reference.update({
         'completed': true,
       });
 
       // Add coins to user's total
-      double reward = challenge['reward'];
+      double reward = challenge['reward'] ?? 0.0;
       double currentCoins = userDoc['coins'] ?? 0.0;
+
       await FirebaseFirestore.instance.collection('users').doc(userId).update({
         'coins': currentCoins + reward,
       });
+
+      print('Challenge completed and coins updated');
     }
   }
 }
+
 
 
 

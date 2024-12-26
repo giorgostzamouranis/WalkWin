@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'story_view_page.dart';
 import 'home_page.dart';
 import 'store_page.dart';
+import 'profile_page.dart';
 import 'challenges_page.dart';
 import 'search_friends_page.dart';
 import 'friends_profile_page.dart';
@@ -340,7 +341,13 @@ Widget _buildWalcoins() {
           children: [
             InkWell(
               onTap: () {
-                // Navigate to Profile
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 300),
+                    pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const HomePage()),
+                  ),
+                );
               },
               child: CircleAvatar(
                 radius: 20,
