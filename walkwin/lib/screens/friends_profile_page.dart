@@ -25,10 +25,6 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
       final friendId = widget.user['uid'];
 
-          // Debugging log
-      print('Current User ID: $currentUserId');
-      print('Friend ID: $friendId');
-
       if (friendId == null || currentUserId == friendId) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Invalid operation: Cannot send a request to yourself.')),
@@ -36,26 +32,40 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
         return;
       }
 
-      // Reference to the friend's `friendRequests` sub-collection
+      // Reference to the friend's friendRequests sub-collection
       final friendRequestsCollection = FirebaseFirestore.instance
           .collection('users')
           .doc(friendId)
           .collection('friendRequests');
 
-      print('Sending friend request to Firestore...');
-      // Add the friend request
+      // Debugging: Check current user and friend
+      print('Current User ID: $currentUserId');
+      print('Friend ID: $friendId');
+
+      // Delete existing requests from the current user
+      final querySnapshot = await friendRequestsCollection
+          .where('from', isEqualTo: currentUserId)
+          .get();
+
+      for (var doc in querySnapshot.docs) {
+        print('Deleting existing friend request: ${doc.id}');
+        await doc.reference.delete();
+      }
+
+      // Add the new friend request
       await friendRequestsCollection.add({
         'from': currentUserId,
         'timestamp': FieldValue.serverTimestamp(),
       });
-      print('Friend request successfully written to Firestore!');
 
+      print('Friend request successfully written to Firestore!');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Friend request sent!')),
       );
     } catch (e) {
-      // Show error message if there's an issue
+      // Debugging: Log error
+      print('Error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending friend request: $e')),
       );
@@ -65,6 +75,7 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
       });
     }
   }
+
 
 
   @override
