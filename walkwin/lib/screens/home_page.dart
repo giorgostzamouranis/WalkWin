@@ -560,7 +560,7 @@ class CircularStepsWidget extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Image.asset(
-                'assets/images/steps.png',
+                'assets/icons/steps.png',
                 width: iconSize,
                 height: iconSize,
                 fit: BoxFit.contain,

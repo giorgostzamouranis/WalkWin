@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'welcome_page.dart'; 
 import 'change_step_goals_page.dart';
+import 'package:qr_flutter/qr_flutter.dart'; // QR code generation library
+
 
 class Profile extends StatefulWidget {
   final Widget returnPage; // The page to return to
@@ -185,31 +187,28 @@ class _ProfileState extends State<Profile> {
                     ),
                     const SizedBox(height: 10),
 
-                    // My QR button
-                    SizedBox(
-                      width: 120,
-                      height: 30,
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF004D40),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: Colors.black, width: 2.0),
-                          ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final username = FirebaseAuth.instance.currentUser?.displayName ?? "No Username";
+                        showQrOverlay(context, username);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF004D40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: Colors.black, width: 2.0),
                         ),
-                        child: const Center(
-                          child: Text(
-                            "My QR",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                      ),
+                      child: const Text(
+                        "My QR",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 10),
 
                     // Logout button
@@ -438,3 +437,91 @@ class _ProfileState extends State<Profile> {
     );
   }
 }
+
+void showQrOverlay(BuildContext context, String username) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: false, // Prevent closing by tapping outside
+    barrierLabel: 'Close',
+    barrierColor: const Color(0xFF008374).withOpacity(0.73), // Transparent overlay
+    transitionDuration: const Duration(milliseconds: 400),
+    pageBuilder: (context, animation1, animation2) {
+      return const SizedBox();
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      final offsetAnimation = Tween<Offset>(
+        begin: const Offset(0, 1),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeInOut,
+      ));
+
+      return SlideTransition(
+        position: offsetAnimation,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 20,
+              left: 20,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
+                onPressed: () {
+                  Navigator.pop(context); // Close the overlay
+                },
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // "SCAN ME!" text box above the QR code
+                  Container(
+                    width: 157,
+                    height: 63,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF004D40),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "SCAN ME!",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // QR Code box
+                  Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Colors.white, // White background for the QR code
+                      border: Border.all(color: Colors.black, width: 2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: CustomPaint(
+                      painter: QrPainter(
+                        data: username,
+                        version: QrVersions.auto,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ), 
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+

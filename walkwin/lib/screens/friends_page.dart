@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:io'; 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +9,11 @@ import 'story_view_page.dart';
 import 'home_page.dart';
 import 'store_page.dart';
 import 'challenges_page.dart';
+import 'search_friends_page.dart';
+import 'friends_profile_page.dart';
+import 'friends_list_page.dart';
+import 'package:qr_code_scanner/qr_code_scanner.dart'; // Add the QR code scanning library
+import 'package:flutter/widgets.dart';
 
 
 
@@ -22,6 +27,7 @@ class FriendsPage extends StatefulWidget {
 
 class _FriendsPageState extends State<FriendsPage> {
   List<Map<String, dynamic>> stories = [];
+  List<Map<String, dynamic>> leaderboardData = [];
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? searchedUser;
@@ -31,6 +37,7 @@ class _FriendsPageState extends State<FriendsPage> {
   void initState() {
     super.initState();
     _fetchStories();
+    _fetchLeaderboardData();
   }
 
   Future<void> _fetchStories() async {
@@ -49,6 +56,60 @@ class _FriendsPageState extends State<FriendsPage> {
       });
     }
   }
+
+  Future<void> _fetchLeaderboardData() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      return;
+    }
+
+    try {
+      // Fetch the current user's data
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        return;
+      }
+
+      final currentUser = {
+        'username': userDoc['username'],
+        'monthlySteps': userDoc['monthlySteps'] ?? 0,
+        'isCurrentUser': true, // Flag to identify the logged-in user
+      };
+
+      // Check if the user has friends
+      final friends = userDoc['friends'] ?? [];
+      List<Map<String, dynamic>> friendsData = [];
+
+      if (friends.isNotEmpty) {
+        // Fetch friends' data only if friends list is not empty
+        final friendsSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('uid', whereIn: friends)
+            .get();
+
+        friendsData = friendsSnapshot.docs.map((doc) {
+          return {
+            'username': doc['username'],
+            'monthlySteps': doc['monthlySteps'] ?? 0,
+            'isCurrentUser': false,
+          };
+        }).toList();
+      }
+
+      // Combine current user and friends, then sort by monthly steps
+      final allData = [currentUser, ...friendsData];
+      allData.sort((a, b) => b['monthlySteps'].compareTo(a['monthlySteps']));
+
+      setState(() {
+        leaderboardData = allData;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching leaderboard: $e')),
+      );
+    }
+  }
+
 
   Future<void> _uploadStory() async {
     if (kIsWeb) {
@@ -132,17 +193,24 @@ Future<void> _searchUser(String query) async {
           children: [
             // Top Bar
             _buildTopBar(),
-
-            const SizedBox(height: 16),
-
+            const SizedBox(height: 1),
             // Stories Row
             _buildStoriesRow(),
-
             // Search Bar
             _buildSearchBar(),
-
-            // Search Results
-            if (isSearching) _buildSearchResults(),
+            // Leaderboard Section
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    flex: 3, // Adjust the flex to make leaderboard smaller
+                    child: _buildLeaderboard()
+                  ),
+                  const SizedBox(height: 1), // Add spacing between leaderboard and buttons
+                  _buildActionButtons(), // Add the new buttons here
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -288,7 +356,7 @@ Widget _buildWalcoins() {
           color: Colors.black,
           thickness: 1, // Thin line
         ),
-        const SizedBox(height: 8), // Add some spacing
+        const SizedBox(height: 1), // Add some spacing
 
         // Stories Row
         Padding(
@@ -300,7 +368,7 @@ Widget _buildWalcoins() {
                 onTap: _uploadStory,
                 child: Container(
                   width: 59,
-                  height: 50,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: const Color(0xFF004D40),
                     borderRadius: BorderRadius.circular(20),
@@ -346,7 +414,7 @@ Widget _buildWalcoins() {
             ],
           ),
         ),
-        const SizedBox(height: 8), // Add some spacing
+        const SizedBox(height: 1), // Add some spacing
 
         // Line below stories
         const Divider(
@@ -358,56 +426,309 @@ Widget _buildWalcoins() {
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Search for a user...',
-          prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const SearchFriendsPage(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              const curve = Curves.easeInOut;
+              final tween = Tween(begin: const Offset(0, 1), end: Offset.zero);
+              final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+              return SlideTransition(
+                position: tween.animate(curvedAnimation),
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 800),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: SizedBox(
+          width: 375, // Set the desired width
+          height: 36,  // Set the desired height
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.black, width: 1.0),
+            ),
+            child: Row(
+              children: const [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10.0),
+                  child: Icon(Icons.search, color: Colors.grey),
+                ),
+                Text(
+                  'Search for a user...',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              ],
+            ),
           ),
         ),
-        onChanged: (query) {
-          setState(() {
-            isSearching = true;
-          });
-          _searchUser(query);
-        },
       ),
     );
   }
 
-Widget _buildSearchResults() {
-  if (searchedUser == null) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Text(
-        'No user found',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
+
+
+
+
+  Widget _buildLeaderboard() {
+    final currentMonth = DateTime.now().month;
+    final monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final monthName = monthNames[currentMonth - 1];
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 16.0, left: 16.0, bottom: 4.0),
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Text(
+              monthName,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        Container(
+          width: 335,
+          height: 326,
+          decoration: BoxDecoration(
+            color: const Color(0xFF00E6B0),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                color: const Color(0xFF004D40),
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: const Center(
+                  child: Text(
+                    'Leaderboard',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: List.generate(leaderboardData.length, (index) {
+                      final user = leaderboardData[index];
+                      final isCurrentUser = user['isCurrentUser'] ?? false;
+                      final backgroundColor = index % 2 == 0
+                          ? const Color(0xFF00E6B0)
+                          : const Color(0xFF004D40);
+
+                      return Container(
+                        color: isCurrentUser ? Colors.amber : backgroundColor, // Highlight current user
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              padding: const EdgeInsets.all(8.0),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${index + 1}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  if (index == 0)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8.0),
+                                      child: Image.asset(
+                                        'assets/icons/trophy.png',
+                                        width: 24,
+                                        height: 24,
+                                      ),
+                                    ),
+                                  Text(
+                                    user['username'],
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '${user['monthlySteps']}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Image.asset(
+                                    'assets/icons/steps.png',
+                                    width: 16,
+                                    height: 16,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Method for building the action buttons
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        _buildActionButton('Challenge Friends', 'assets/icons/globe.png', onTap: () {
+          // Add functionality for "Challenge Friends" here
+        }),
+        const SizedBox(height: 10), // Space between buttons
+        _buildActionButton('Active Challenges', 'assets/icons/scanner.png', onTap: () {
+          // Add functionality for "Active Challenges" here
+        }),
+        const SizedBox(height: 10), // Space between buttons
+        _buildActionButton('Scan Friends', 'assets/icons/clock_forward.png', onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => Scaffold(
+                appBar: AppBar(
+                  title: const Text('Scan QR Code'),
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+                body: QRView(
+                  key: GlobalKey(), // Provide a unique GlobalKey for QRView
+                  onQRViewCreated: (QRViewController controller) async {
+                    final barcode = await controller.scannedDataStream.first;
+                    if (barcode != null) {
+                      final scannedUsername = barcode.code; // Assuming QR code contains the username.
+
+                      // Fetch user data from Firestore
+                      final userSnapshot = await FirebaseFirestore.instance
+                          .collection('users')
+                          .where('username', isEqualTo: scannedUsername)
+                          .get();
+
+                      if (userSnapshot.docs.isNotEmpty) {
+                        Navigator.of(context).push(
+                          PageRouteBuilder(
+                            pageBuilder: (context, animation, secondaryAnimation) =>
+                                FriendsProfilePage(user: userSnapshot.docs.first.data()),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return SlideTransition(
+                                position: Tween(begin: const Offset(0, 1), end: Offset.zero)
+                                    .animate(animation),
+                                child: child,
+                              );
+                            },
+                            transitionDuration: const Duration(milliseconds: 800),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('User not found.')),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ),
+            ),
+          );
+        }),
+
+      ],
+    );
+  }
+
+  // Updated Method for building a single action button
+  Widget _buildActionButton(String text, String iconPath, {required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 390,
+        height: 42,
+        decoration: BoxDecoration(
+          color: const Color(0xFF004D40),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.black, // Black stroke
+            width: 2.0,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Icon on the left
+            Positioned(
+              left: 16,
+              top: -4, // Adjust top to vertically align the icon
+              child: Image.asset(
+                iconPath,
+                width: 45,
+                height: 45,
+                color: Colors.white,
+              ),
+            ),
+            // Centered text
+            Center(
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 25,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-
-  return ListTile(
-    leading: CircleAvatar(
-      backgroundImage: searchedUser!['avatar'] != null && searchedUser!['avatar'].isNotEmpty
-          ? NetworkImage(searchedUser!['avatar'])
-          : AssetImage('assets/images/default_avatar.png') as ImageProvider,
-    ),
-    title: Text(
-      searchedUser!['username'],
-      style: TextStyle(
-        color: Colors.white,
-      ),
-    ),
-  );
-}
-
 
   Widget _buildBottomNavigationBar() {
     return Container(

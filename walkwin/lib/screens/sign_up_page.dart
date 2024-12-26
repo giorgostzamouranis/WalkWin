@@ -43,6 +43,9 @@ class _SignUpPageState extends State<SignUpPage> {
         password: password,
       );
 
+      // Update the displayName with the username
+      await userCredential.user!.updateDisplayName(username);
+
       // Save user data in Firestore with basic initialization
       String userId = userCredential.user!.uid;
       final now = DateTime.now();

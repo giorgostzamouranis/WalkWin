@@ -9,6 +9,9 @@ import 'screens/sign_up_page.dart';
 import 'screens/store_page.dart';
 import 'screens/challenges_page.dart';
 import 'screens/friends_page.dart';
+import 'screens/search_friends_page.dart';
+import 'screens/friends_profile_page.dart';
+import 'screens/friends_list_page.dart';
 import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
@@ -63,17 +66,34 @@ class MyApp extends StatelessWidget {
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
         '/friends': (context) => const FriendsPage(),
+        '/signin': (context) => const SignIn(),
+        '/signup': (context) => const SignUpPage(),
+        '/stepGoals': (context) => const StepGoalsPage(),
         '/view_story': (context) => StoryViewPage(
               stories: [], // Default empty list; update during runtime.
               initialIndex: 0, // Default to the first story.
             ),
-        '/signin': (context) => const SignIn(),
-        '/signup': (context) => const SignUpPage(),
-        '/stepGoals': (context) => const StepGoalsPage(),
+        '/searchfriendspage': (context) => const SearchFriendsPage(),
+      },
+      // Add onGenerateRoute for dynamic routing
+      onGenerateRoute: (settings) {
+        if (settings.name == '/friendsprofilepage') {
+          final user = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => FriendsProfilePage(user: user),
+          );
+        } else if (settings.name == '/friendslistpage') {
+          final friends = settings.arguments as List<Map<String, dynamic>>;
+          return MaterialPageRoute(
+            builder: (context) => FriendsListPage(friends: friends),
+          );
+        }
+        return null; // Return null for undefined routes
       },
     );
   }
 }
+
 
 
 
