@@ -442,12 +442,17 @@ Widget _buildWalcoins() {
                     // Get the current logged-in user's UID
                     final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
 
-                    // Fetch the current user's document
-                    final userDoc = await FirebaseFirestore.instance.collection('users').doc(currentUserUid).get();
+                    // Query the friendRequests sub-collection for this user
+                    final friendRequestsSnapshot = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(currentUserUid)
+                        .collection('friendRequests')
+                        .get();
 
-                    if (userDoc.exists && userDoc['incomingFriendRequests'] != null && userDoc['incomingFriendRequests'].isNotEmpty) {
-                      // Get the first incoming friend request UID
-                      final requesterUid = userDoc['incomingFriendRequests'][0];
+                    if (friendRequestsSnapshot.docs.isNotEmpty) {
+                      // Get the first friend request
+                      final friendRequest = friendRequestsSnapshot.docs.first;
+                      final requesterUid = friendRequest['from'];
 
                       // Fetch data for the requester
                       final requesterData = await fetchRequesterData(requesterUid);
@@ -455,16 +460,18 @@ Widget _buildWalcoins() {
                       // Navigate to Incoming Friend Request Page
                       Navigator.of(context).push(
                         PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) => IncomingFriendRequestPage(
-                            requesterData: requesterData,
-                          ),
+                          pageBuilder: (context, animation, secondaryAnimation) =>
+                              IncomingFriendRequestPage(
+                                requesterData: requesterData,
+                              ),
                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                             return SlideTransition(
-                              position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(animation),
+                              position: Tween(begin: const Offset(0, 1), end: Offset.zero)
+                                  .animate(animation),
                               child: child,
                             );
                           },
-                          transitionDuration: const Duration(milliseconds: 800),
+                          transitionDuration: const Duration(milliseconds: 400),
                         ),
                       );
                     } else {
