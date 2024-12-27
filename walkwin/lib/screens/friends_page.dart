@@ -36,6 +36,7 @@ class _FriendsPageState extends State<FriendsPage> {
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? searchedUser;
   bool isSearching = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -46,20 +47,77 @@ class _FriendsPageState extends State<FriendsPage> {
 
   Future<void> _fetchStories() async {
     final userId = _auth.currentUser?.uid;
+    if (userId == null) return;
 
-    if (userId != null) {
-      final snapshot = await FirebaseFirestore.instance.collection('stories').get();
-      setState(() {
-        stories = snapshot.docs.map((doc) {
-          return {
-            'storyUrl': doc['storyUrl'],
-            'username': doc['username'],
-            'uid': doc['uid'],
-          };
-        }).toList();
+    try {
+      // 1. Get the current user's doc
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      if (!userDoc.exists) return;
+
+      // 2. Extract friends list
+      final friendsIds = List<String>.from(userDoc.data()?['friends'] ?? []);
+
+      // 3. Build the list of allowed UIDs (current user + their friends)
+      final allowedUids = [userId, ...friendsIds];
+
+      // 4. Query only stories where `uid` is in allowedUids
+      final snapshot = await FirebaseFirestore.instance
+          .collection('stories')
+          .where('uid', whereIn: allowedUids)
+          .get();
+
+      // 5. Build a new list that includes each user’s avatar
+      List<Map<String, dynamic>> fetchedStories = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final storyOwnerUid = data['uid'] as String?;
+        if (storyOwnerUid == null) continue;
+
+        // Fetch user doc for avatar, updated username, etc.
+        final ownerDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(storyOwnerUid)
+            .get();
+        final ownerData = ownerDoc.data() ?? {};
+        final avatarPath = ownerData['avatar'] ?? 'assets/images/default_avatar.png';
+        final ownerUsername = ownerData['username'] ?? 'Unknown User';
+
+        fetchedStories.add({
+          'storyUrl': data['storyUrl'],    // URL to the story image
+          'uid': storyOwnerUid,
+          'username': ownerUsername,
+          'avatar': avatarPath,
+        });
+      }
+
+      // 6. Sort so the current user's story is first
+      //    We'll place items where `uid == userId` at the front
+      fetchedStories.sort((a, b) {
+        if (a['uid'] == userId && b['uid'] != userId) {
+          return -1; // a comes first
+        } else if (b['uid'] == userId && a['uid'] != userId) {
+          return 1;  // b comes first
+        } else {
+          return 0;  // no change
+        }
       });
+
+      setState(() {
+        stories = fetchedStories;
+      });
+    } catch (e) {
+      debugPrint('Error fetching stories: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching stories: $e')),
+      );
     }
   }
+
+
 
   Future<Map<String, dynamic>> fetchRequesterData(String uid) async {
     final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -151,6 +209,8 @@ class _FriendsPageState extends State<FriendsPage> {
         return;
       }
 
+      setState(() => _isUploading = true);  // Start loading animation
+
       try {
         final file = File(photo.path);
         final storageRef = FirebaseStorage.instance.ref().child('stories/$userId.jpg');
@@ -164,15 +224,19 @@ class _FriendsPageState extends State<FriendsPage> {
           'uid': userId,
         });
 
-        _fetchStories(); // Refresh stories
+        // Refresh stories row
+        await _fetchStories(); 
+
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to upload story: $e')),
         );
+      }finally {
+      setState(() => _isUploading = false); // Stop loading animation
       }
     }
   }
-  
+
   Future<void> _searchUser(String query) async {
     if (query.isEmpty) {
       setState(() {
@@ -209,35 +273,67 @@ class _FriendsPageState extends State<FriendsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.teal.shade700,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top Bar
-            _buildTopBar(),
-            const SizedBox(height: 1),
-            // Stories Row
-            _buildStoriesRow(),
-            // Search Bar
-            _buildSearchBar(),
-            // Leaderboard Section
-            Expanded(
-              child: Column(
-                children: [
-                  Expanded(
-                    flex: 3, // Adjust the flex to make leaderboard smaller
-                    child: _buildLeaderboard()
+      body: Stack(
+        children: [
+          // Main content
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Bar
+                _buildTopBar(),
+                const SizedBox(height: 1),
+                // Stories Row
+                _buildStoriesRow(),
+                // Search Bar
+                _buildSearchBar(),
+                // Leaderboard Section
+                Expanded(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        flex: 3, // Adjust the flex to make leaderboard smaller
+                        child: _buildLeaderboard(),
+                      ),
+                      const SizedBox(height: 1), // Add spacing between leaderboard and buttons
+                      _buildActionButtons(), // Add the new buttons here
+                    ],
                   ),
-                  const SizedBox(height: 1), // Add spacing between leaderboard and buttons
-                  _buildActionButtons(), // Add the new buttons here
+                ),
+              ],
+            ),
+          ),
+
+        // Loading overlay if uploading a story
+        if (_isUploading)
+          Positioned.fill(
+            child: Container(
+              // Semi-transparent dark background
+              color: Colors.black54,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                  const SizedBox(height: 16), // Spacing between the spinner and text
+                  const Text(
+                    "Uploading story",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
+
 
   Widget _buildTopBar() {
     return Padding(
@@ -375,6 +471,17 @@ Widget _buildWalcoins() {
     );
   }
 
+  ImageProvider<Object> _buildAvatarImage(String? avatarPath) {
+    if (avatarPath == null || avatarPath.isEmpty) {
+      return const AssetImage('assets/images/default_avatar.png');
+    }
+    if (avatarPath.startsWith('http')) {
+      return NetworkImage(avatarPath);
+    }
+    return AssetImage(avatarPath);
+  }
+
+
   Widget _buildStoriesRow() {
     return Column(
       children: [
@@ -408,7 +515,7 @@ Widget _buildWalcoins() {
               ),
               const SizedBox(width: 8),
 
-              // Stories
+              // Stories Scroll
               Expanded(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -416,6 +523,7 @@ Widget _buildWalcoins() {
                     children: stories.map((story) {
                       return GestureDetector(
                         onTap: () {
+                          // Navigate to StoryViewPage
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -428,9 +536,27 @@ Widget _buildWalcoins() {
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: CircleAvatar(
-                            radius: 29.5,
-                            backgroundImage: NetworkImage(story['storyUrl']),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundImage: _buildAvatarImage(story['avatar']),
+                              ),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                width: 60, // Constrain username width if you want
+                                child: Text(
+                                  story['username'],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
