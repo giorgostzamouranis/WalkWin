@@ -180,7 +180,12 @@ Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) as
             child: Center(
               child: CircleAvatar(
                 radius: 95,
-                backgroundImage: NetworkImage(requesterData['avatar'] ?? 'assets/images/default_avatar.png'),
+                backgroundImage: requesterData['avatar'] != null &&
+                                requesterData['avatar'].toString().startsWith('http')
+                    ? NetworkImage(requesterData['avatar'])
+                    : AssetImage(
+                        requesterData['avatar'] ?? 'assets/images/Avatar1.png',
+                      ) as ImageProvider,
               ),
             ),
           ),

@@ -172,36 +172,37 @@ class _FriendsPageState extends State<FriendsPage> {
       }
     }
   }
-Future<void> _searchUser(String query) async {
-  if (query.isEmpty) {
-    setState(() {
-      searchedUser = null;
-      isSearching = false;
-    });
-    return;
+  
+  Future<void> _searchUser(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        searchedUser = null;
+        isSearching = false;
+      });
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isEqualTo: query)
+          .get();
+
+      setState(() {
+        isSearching = true;
+        searchedUser = snapshot.docs.isNotEmpty ? snapshot.docs.first.data() : null;
+      });
+    } catch (e) {
+      setState(() {
+        isSearching = true;
+        searchedUser = null;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching user: $e')),
+      );
+    }
   }
-
-  try {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isEqualTo: query)
-        .get();
-
-    setState(() {
-      isSearching = true;
-      searchedUser = snapshot.docs.isNotEmpty ? snapshot.docs.first.data() : null;
-    });
-  } catch (e) {
-    setState(() {
-      isSearching = true;
-      searchedUser = null;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error fetching user: $e')),
-    );
-  }
-}
 
 
   @override

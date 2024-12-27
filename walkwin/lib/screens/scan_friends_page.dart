@@ -43,7 +43,13 @@ class _ScanFriendPageState extends State<ScanFriendPage> {
 
           // 2) If found, navigate to that user's profile page
           if (userSnapshot.docs.isNotEmpty) {
-            final userData = userSnapshot.docs.first.data();
+            // Get the doc
+            final doc = userSnapshot.docs.first;
+            final userData = doc.data() as Map<String, dynamic>;
+
+            // Ensure we have a UID
+            // If your doc ID is the UID, just set it:
+            userData['uid'] = doc.id;
 
             // Ensure avatar is a String
             if (userData['avatar'] != null &&
@@ -51,7 +57,7 @@ class _ScanFriendPageState extends State<ScanFriendPage> {
               // It's a local asset path
               userData['avatar'] = userData['avatar']; // Keep it as a String
             }
-            
+
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(

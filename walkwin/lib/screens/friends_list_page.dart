@@ -77,6 +77,88 @@ class _FriendsListPageState extends State<FriendsListPage> {
     }
   }
 
+  ImageProvider<Object> _buildAvatarImage(String? avatarPath) {
+    if (avatarPath == null || avatarPath.isEmpty) {
+      // Fallback for null or empty
+      return const AssetImage('assets/images/Avatar1.png');
+    }
+
+    // If it starts with 'http' or 'https', treat it like a network URL
+    if (avatarPath.startsWith('http')) {
+      return NetworkImage(avatarPath);
+    }
+
+    // Otherwise, assume it's a local asset path, like 'assets/images/Avatar3.png'
+    return AssetImage(avatarPath);
+  }
+
+  Future<void> _confirmRemoveFriend(String friendId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Remove Friend?'),
+          content: const Text('Are you sure you want to remove this friend?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user tapped "Yes", remove the friend
+    if (confirm == true) {
+      _removeFriend(friendId);
+    }
+  }
+
+  Future<void> _removeFriend(String friendId) async {
+    final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserUid == null) return;
+
+    try {
+      // 1. Remove the friend from the current user's friends list
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserUid)
+          .update({
+        'friends': FieldValue.arrayRemove([friendId]),
+      });
+
+      // 2. Remove the current user from the friend's friends list
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(friendId)
+          .update({
+        'friends': FieldValue.arrayRemove([currentUserUid]),
+      });
+
+      // 3. Update local list so it won't show in the UI anymore
+      setState(() {
+        friends.removeWhere((f) => f['id'] == friendId);
+      });
+
+      // 4. Show success feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Friend removed successfully')),
+      );
+    } catch (e) {
+      debugPrint('Error removing friend: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error removing friend: $e')),
+      );
+    }
+  }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,13 +207,17 @@ class _FriendsListPageState extends State<FriendsListPage> {
                             final friend = friends[index];
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: NetworkImage(friend['avatar']),
+                                backgroundImage: _buildAvatarImage(friend['avatar']),
                               ),
                               title: Text(
                                 friend['username'],
                                 style: const TextStyle(color: Colors.black),
                               ),
                               tileColor: Colors.white,
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _confirmRemoveFriend(friend['id']),
+                              ),                              
                             );
                           },
                         ),

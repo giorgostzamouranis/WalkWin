@@ -115,8 +115,11 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
         children: [
           CircleAvatar(
             radius: 95,
-            backgroundImage:
-                NetworkImage(widget.user['avatar'] ?? 'assets/images/default_avatar.png'),
+            backgroundImage: widget.user['avatar'] != null &&
+                            widget.user['avatar'].startsWith('http')
+                ? NetworkImage(widget.user['avatar'])
+                : AssetImage(widget.user['avatar'] ?? 'assets/images/Avatar1.png')
+                    as ImageProvider,
           ),
           const SizedBox(height: 16),
           Row(
