@@ -57,6 +57,9 @@
 	<string>We need access to your camera to upload stories.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to upload stories.</string>
+	<key>NSMotionUsageDescription</key>        <!-- For pedometer -->
+	<string>This app uses Motion & Fitness to track your steps.</string>
+
 
 </dict>
 </plist>

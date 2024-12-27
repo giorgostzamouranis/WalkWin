@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart'; // For date and time handling
 import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'store_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
@@ -26,8 +27,34 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _requestActivityRecognitionPermission(); // <-- Request permission first
     _initializeSteps();
   }
+
+  Future<void> _requestActivityRecognitionPermission() async {
+    // 1) Check current permission status
+    final status = await Permission.activityRecognition.status;
+
+    // 2) If not granted, request it
+    if (status.isDenied) {
+      final newStatus = await Permission.activityRecognition.request();
+
+      // 3) If granted, proceed with pedometer
+      if (newStatus.isGranted) {
+        _initializeSteps();
+      } else {
+        // Show a message or handle denial gracefully
+        debugPrint("Activity Recognition permission denied");
+      }
+    } else if (status.isGranted) {
+      // Already granted
+      _initializeSteps();
+    } else {
+      // Handle other states, like permanently denied, restricted, etc.
+      debugPrint("Permission for activity recognition not granted.");
+    }
+  }
+
 
   Future<void> _initializeSteps() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
@@ -47,10 +74,13 @@ class _HomePageState extends State<HomePage> {
       }
     });
 
-    // Listen for step count changes via pedometer
+    // Start listening to pedometer
     _stepCountStream = Pedometer.stepCountStream;
     _stepCountStream.listen((StepCount event) {
+      debugPrint("New step count from pedometer: ${event.steps}");
       _updateSteps(event.steps);
+    }, onError: (error) {
+      debugPrint("Pedometer Error: $error");
     });
   }
 
@@ -92,36 +122,51 @@ class _HomePageState extends State<HomePage> {
 
 
 
-  Future<void> _updateSteps(int steps) async {
+  Future<void> _updateSteps(int stepsFromPedometer) async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId == null) return;
 
-    final now = DateTime.now();
-    final today = DateFormat('yyyy-MM-dd').format(now);
-    final weekOfYear = int.parse(DateFormat('w').format(now));
-    final month = DateFormat('yyyy-MM').format(now);
+    // 1) Check if daily/weekly/monthly counters need resetting
+    await _resetStepCountersIfNeeded();
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    // 2) Retrieve the user doc
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .get();
     if (!userDoc.exists) return;
 
-    // Fetch current step counts
+    // 3) ***Important***: Use the difference between the new pedometer reading and the last reading
+    // so you only count "new" steps.
+    // Suppose you store it in Firestore as 'previousSteps'
+    int lastReading = userDoc.data()?['previousSteps'] ?? 0;
+    int difference = stepsFromPedometer - lastReading;
+
+    // If difference is negative (e.g., phone reboot or pedometer reset),
+    // you might want to skip or reset. We'll clamp it at 0 to avoid subtracting steps.
+    if (difference < 0) {
+      difference = 0;
+    }
+
+    // 4) Current Firestore counters
     int currentDailySteps = userDoc['dailySteps'] ?? 0;
     int currentWeeklySteps = userDoc['weeklySteps'] ?? 0;
     int currentMonthlySteps = userDoc['monthlySteps'] ?? 0;
 
-    // Calculate new steps
-    int newDailySteps = currentDailySteps + steps;
-    int newWeeklySteps = currentWeeklySteps + steps;
-    int newMonthlySteps = currentMonthlySteps + steps;
+    // 5) Increase them by the difference
+    int newDailySteps = currentDailySteps + difference;
+    int newWeeklySteps = currentWeeklySteps + difference;
+    int newMonthlySteps = currentMonthlySteps + difference;
 
-    // Update Firestore
+    // 6) Write back to Firestore
     await FirebaseFirestore.instance.collection('users').doc(userId).update({
       'dailySteps': newDailySteps,
       'weeklySteps': newWeeklySteps,
       'monthlySteps': newMonthlySteps,
+      'previousSteps': stepsFromPedometer, // Store the new pedometer reading
     });
 
-    // Update local state
+    // 7) Update local state
     setState(() {
       _stepsToday = newDailySteps;
       _weeklySteps = newWeeklySteps;
@@ -129,12 +174,9 @@ class _HomePageState extends State<HomePage> {
       _progressToday = _stepsToday / _dailyGoal;
     });
 
-    // Optional: Check challenges after updating steps
+    // 8) Check challenges if you like
     await _checkAndUpdateChallenges(newDailySteps);
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {

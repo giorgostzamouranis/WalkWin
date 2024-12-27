@@ -64,6 +64,7 @@ class _SignUpPageState extends State<SignUpPage> {
         'dailySteps': 0,
         'weeklySteps': 0,
         'monthlySteps': 0,
+        'previousSteps': 0,
         'lastDailyReset': today,
         'lastWeeklyReset': weekOfYear,
         'lastMonthlyReset': month,
