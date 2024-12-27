@@ -13,6 +13,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+
+        coreLibraryDesugaringEnabled true  // Enable library desugaring for newer Java APIs
     }
 
     kotlinOptions {
@@ -39,6 +41,8 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3' // Add desugaring library so Gradle can handle newer Java APIs
+
     implementation platform('com.google.firebase:firebase-bom:33.7.0') // Firebase BoM
     implementation 'com.google.firebase:firebase-analytics'           // Firebase Analytics
     implementation 'com.google.firebase:firebase-auth'                // Firebase Authentication

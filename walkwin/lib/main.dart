@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:device_preview/device_preview.dart'; // Import DevicePreview
+
+// Import your screens
 import 'screens/welcome_page.dart';
 import 'screens/home_page.dart';
 import 'screens/sign_in_page.dart';
@@ -13,6 +15,7 @@ import 'screens/incoming_friend_request_page.dart';
 import 'screens/search_friends_page.dart';
 import 'screens/friends_profile_page.dart';
 import 'screens/friends_list_page.dart';
+import 'screens/scan_friends_page.dart';    // <--- Make sure to import your QR Scan page
 import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
@@ -20,15 +23,14 @@ import 'screens/story_view_page.dart';
 import 'screens/challenge_friend_page.dart';
 import 'screens/active_challenges_page.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // If Web
+  // Initialize Firebase for Web or Mobile
   if (kIsWeb) {
     await Firebase.initializeApp(
-      options: FirebaseOptions(
-        apiKey: "AIzaSyAASVkDIXTZ_LizUE_8bjvftPGCpFBu-ps",
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyAASVkDIXTZ_...",
         authDomain: "walkwin-5d102.firebaseapp.com",
         projectId: "walkwin-5d102",
         storageBucket: "walkwin-5d102.firebasestorage.app",
@@ -38,7 +40,6 @@ void main() async {
       ),
     );
   } else {
-    // Default for mobile platforms
     await Firebase.initializeApp();
   }
 
@@ -58,8 +59,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'WalkWin',
-      locale: DevicePreview.locale(context), // Use DevicePreview's locale
-      builder: DevicePreview.appBuilder, // Wrap widgets with DevicePreview
+      // Use DevicePreview
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         primarySwatch: Colors.teal,
       ),
@@ -67,22 +69,22 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const WelcomePage(),
         '/home': (context) => const HomePage(),
+        '/signin': (context) => const SignIn(),
+        '/signup': (context) => const SignUpPage(),
         '/store': (context) => const StorePage(),
         '/challenges': (context) => const Challenges(),
         '/friends': (context) => const FriendsPage(),
-        '/signin': (context) => const SignIn(),
-        '/signup': (context) => const SignUpPage(),
-        '/stepGoals': (context) => const StepGoalsPage(),
-        '/view_story': (context) => StoryViewPage(
-              stories: [], // Default empty list; update during runtime.
-              initialIndex: 0, // Default to the first story.
-            ),
         '/searchfriendspage': (context) => const SearchFriendsPage(),
         '/challengefriend': (context) => const ChallengeFriendPage(),
         '/activechallengefriend': (context) => const ActiveChallengesPage(),
-
+        '/stepGoals': (context) => const StepGoalsPage(),
+        '/view_story': (context) => StoryViewPage(
+              stories: [],
+              initialIndex: 0,
+            ),
+        '/scanFriends': (context) => const ScanFriendPage(), // <--- For QR scanning
       },
-      // Add onGenerateRoute for dynamic routing
+      // For any routes that need arguments, use onGenerateRoute
       onGenerateRoute: (settings) {
         if (settings.name == '/incomingFriendRequest') {
           final args = settings.arguments as Map<String, dynamic>?;
@@ -105,11 +107,12 @@ class MyApp extends StatelessWidget {
             builder: (context) => const FriendsListPage(),
           );
         }
-        return null; // Return null for undefined routes
+        return null; // Return null for unknown routes
       },
     );
   }
 }
+
 
 
 

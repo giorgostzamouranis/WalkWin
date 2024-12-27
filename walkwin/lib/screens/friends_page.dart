@@ -18,6 +18,7 @@ import 'package:qr_code_scanner/qr_code_scanner.dart'; // Add the QR code scanni
 import 'package:flutter/widgets.dart';
 import 'challenge_friend_page.dart';
 import 'active_challenges_page.dart';
+import 'scan_friends_page.dart';
 
 
 
@@ -747,60 +748,17 @@ Widget _buildWalcoins() {
                 );
         }),
         const SizedBox(height: 10), // Space between buttons
-        _buildActionButton('Scan Friends', 'assets/icons/scanner.png', onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => Scaffold(
-                appBar: AppBar(
-                  title: const Text('Scan QR Code'),
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                ),
-                body: QRView(
-                  key: GlobalKey(), // Provide a unique GlobalKey for QRView
-                  onQRViewCreated: (QRViewController controller) async {
-                    final barcode = await controller.scannedDataStream.first;
-                    if (barcode != null) {
-                      final scannedUsername = barcode.code; // Assuming QR code contains the username.
-
-                      // Fetch user data from Firestore
-                      final userSnapshot = await FirebaseFirestore.instance
-                          .collection('users')
-                          .where('username', isEqualTo: scannedUsername)
-                          .get();
-
-                      if (userSnapshot.docs.isNotEmpty) {
-                        Navigator.of(context).push(
-                          PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) =>
-                                FriendsProfilePage(user: userSnapshot.docs.first.data()),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                              return SlideTransition(
-                                position: Tween(begin: const Offset(0, 1), end: Offset.zero)
-                                    .animate(animation),
-                                child: child,
-                              );
-                            },
-                            transitionDuration: const Duration(milliseconds: 800),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('User not found.')),
-                        );
-                      }
-                    }
-                  },
-                ),
+        _buildActionButton(
+          'Scan Friends',
+          'assets/icons/scanner.png',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const ScanFriendPage(),
               ),
-            ),
-          );
-        }),
-
+            );
+          },
+        ),
       ],
     );
   }
