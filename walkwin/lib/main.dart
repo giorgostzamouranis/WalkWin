@@ -102,7 +102,7 @@ class MyApp extends StatelessWidget {
         } else if (settings.name == '/friendslistpage') {
           final friends = settings.arguments as List<Map<String, dynamic>>;
           return MaterialPageRoute(
-            builder: (context) => FriendsListPage(friends: friends),
+            builder: (context) => const FriendsListPage(),
           );
         }
         return null; // Return null for undefined routes

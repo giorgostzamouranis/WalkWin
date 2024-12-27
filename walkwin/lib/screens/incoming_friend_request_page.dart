@@ -2,68 +2,76 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'friends_list_page.dart';
+import 'friends_page.dart';
 
 class IncomingFriendRequestPage extends StatelessWidget {
   final Map<String, dynamic> requesterData;
 
   const IncomingFriendRequestPage({Key? key, required this.requesterData}) : super(key: key);
 
-  Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) async {
+  Future<void> _deleteFriendRequest(String requesterUid, String recipientUid) async {
+    try {
+      // Reference the recipient's friendRequests sub-collection
+      final friendRequestsCollection = FirebaseFirestore.instance
+          .collection('users')
+          .doc(recipientUid)
+          .collection('friendRequests');
+
+      // Query the friendRequests sub-collection for the specific request
+      final querySnapshot = await friendRequestsCollection
+          .where('from', isEqualTo: requesterUid)
+          .get();
+
+      // Delete all matching documents
+      for (var doc in querySnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      debugPrint('Friend request successfully deleted');
+    } catch (e) {
+      debugPrint('Error deleting friend request: $e');
+    }
+  }
+
+
+Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) async {
     final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
 
-    // Ensure current user UID and requester UID are not null
-    if (currentUserUid == null) {
-      debugPrint('Error: Current User UID is null');
+    if (currentUserUid == null || requesterUid == null) {
+      debugPrint('Error: Current User UID or Requester UID is null');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Current user ID is invalid')),
-      );
-      return;
-    }
-
-    if (requesterUid == null) {
-      debugPrint('Error: Requester UID is null');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Requester ID is invalid')),
+        const SnackBar(content: Text('Error: Invalid User or Requester ID')),
       );
       return;
     }
 
     try {
-      // Log current user ID and requester ID
-      debugPrint('Current User UID: $currentUserUid');
-      debugPrint('Requester UID: $requesterUid');
+      final usersCollection = FirebaseFirestore.instance.collection('users');
 
       // Add requester to current user's friends list
-      await FirebaseFirestore.instance.collection('users').doc(currentUserUid).update({
+      await usersCollection.doc(currentUserUid).update({
         'friends': FieldValue.arrayUnion([requesterUid]),
       });
 
       // Add current user to requester's friends list
-      await FirebaseFirestore.instance.collection('users').doc(requesterUid).update({
+      await usersCollection.doc(requesterUid).update({
         'friends': FieldValue.arrayUnion([currentUserUid]),
       });
 
-      // Remove the friend request from the friendRequests collection
-      await FirebaseFirestore.instance.collection('friendRequests')
-          .where('requesterUid', isEqualTo: requesterUid)
-          .where('recipientUid', isEqualTo: currentUserUid)
-          .get()
-          .then((snapshot) {
-        for (DocumentSnapshot ds in snapshot.docs) {
-          ds.reference.delete();
-        }
-      });
+      // Delete the friend request
+      await _deleteFriendRequest(requesterUid, currentUserUid);
 
-      // Fetch updated friends list
-      final userSnapshot = await FirebaseFirestore.instance.collection('users').doc(currentUserUid).get();
-      final friends = (userSnapshot.data()?['friends'] ?? []).map<Map<String, dynamic>>((friendId) => {'id': friendId}).toList();
+      // Show success message and navigate
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Friend request accepted'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-      // Navigate to FriendsListPage with the new friend highlighted
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => FriendsListPage(friends: friends, newFriendId: requesterUid),
-        ),
+        MaterialPageRoute(builder: (context) => const FriendsListPage()),
       );
     } catch (e) {
       debugPrint('Error accepting friend request: $e');
@@ -73,51 +81,51 @@ class IncomingFriendRequestPage extends StatelessWidget {
     }
   }
 
+
   Future<void> _declineFriendRequest(String? requesterUid, BuildContext context) async {
     final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
 
-    // Ensure current user UID and requester UID are not null
-    if (currentUserUid == null) {
-      debugPrint('Error: Current User UID is null');
+    if (currentUserUid == null || requesterUid == null) {
+      debugPrint('Error: Current User UID or Requester UID is null');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Current user ID is invalid')),
-      );
-      return;
-    }
-
-    if (requesterUid == null) {
-      debugPrint('Error: Requester UID is null');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: Requester ID is invalid')),
+        const SnackBar(content: Text('Error: Invalid User or Requester ID')),
       );
       return;
     }
 
     try {
-      // Log current user ID and requester ID
-      debugPrint('Current User UID: $currentUserUid');
-      debugPrint('Requester UID: $requesterUid');
+      // Delete the friend request
+      await _deleteFriendRequest(requesterUid, currentUserUid);
 
-      // Remove the friend request from the friendRequests collection
-      await FirebaseFirestore.instance.collection('friendRequests')
-          .where('requesterUid', isEqualTo: requesterUid)
-          .where('recipientUid', isEqualTo: currentUserUid)
-          .get()
-          .then((snapshot) {
-        for (DocumentSnapshot ds in snapshot.docs) {
-          ds.reference.delete();
-        }
-      });
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Friend request declined'),
+          backgroundColor: Colors.red,
+        ),
+      );
 
-      // Fetch updated friends list
-      final userSnapshot = await FirebaseFirestore.instance.collection('users').doc(currentUserUid).get();
-      final friends = (userSnapshot.data()?['friends'] ?? []).map<Map<String, dynamic>>((friendId) => {'id': friendId}).toList();
-
-      // Navigate to FriendsListPage
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FriendsListPage(friends: friends),
+      // Navigate to FriendsPage with a move-in animation
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return const FriendsPage();
+          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            const curve = Curves.easeInOut;
+            final curvedAnimation = CurvedAnimation(
+              parent: animation,
+              curve: curve,
+            );
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, -1), // Start off-screen (top of the screen)
+                end: Offset.zero, // End at the current position
+              ).animate(curvedAnimation),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 800), // 800ms duration
         ),
       );
     } catch (e) {
@@ -127,6 +135,11 @@ class IncomingFriendRequestPage extends StatelessWidget {
       );
     }
   }
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {

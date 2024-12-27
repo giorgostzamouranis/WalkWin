@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'friends_page.dart';
 import 'friends_profile_page.dart';
+import 'friends_list_page.dart';
 
 class SearchFriendsPage extends StatefulWidget {
   const SearchFriendsPage({Key? key}) : super(key: key);
@@ -117,7 +118,28 @@ class _SearchFriendsPageState extends State<SearchFriendsPage> {
             Center(
               child: GestureDetector(
                 onTap: () {
-                  // Placeholder for Friends List functionality
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) {
+                        return const FriendsListPage();
+                      },
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        const curve = Curves.easeInOut;
+                        final curvedAnimation = CurvedAnimation(
+                          parent: animation,
+                          curve: curve,
+                        );
+                        return SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 1), // Start from bottom
+                            end: Offset.zero, // End at current position
+                          ).animate(curvedAnimation),
+                          child: child,
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 400),
+                    ),
+                  );
                 },
                 child: Container(
                   width: 212,
@@ -125,12 +147,12 @@ class _SearchFriendsPageState extends State<SearchFriendsPage> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF00E6B0),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.black, width: 1), // Black stroke
+                    border: Border.all(color: Colors.black, width: 1),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
                         blurRadius: 4,
-                        offset: const Offset(0, 2), // Drop shadow
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -147,6 +169,8 @@ class _SearchFriendsPageState extends State<SearchFriendsPage> {
                 ),
               ),
             ),
+
+
             const SizedBox(height: 16),
             // Search Results
             Expanded(

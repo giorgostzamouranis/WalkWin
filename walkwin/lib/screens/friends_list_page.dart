@@ -1,36 +1,80 @@
 import 'package:flutter/material.dart';
-import 'search_friends_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FriendsListPage extends StatefulWidget {
-  final List<Map<String, dynamic>> friends;
-  final String? newFriendId; // Optional new friend ID to highlight
-
-  const FriendsListPage({Key? key, required this.friends, this.newFriendId}) : super(key: key);
+  const FriendsListPage({Key? key}) : super(key: key);
 
   @override
   State<FriendsListPage> createState() => _FriendsListPageState();
 }
 
 class _FriendsListPageState extends State<FriendsListPage> {
-  late List<Map<String, dynamic>> friends; // Local copy of friends list
-  String? newFriendId; // Local state for newFriendId
+  List<Map<String, dynamic>> friends = []; // Local list to store friends data
+  bool isLoading = true; // State to show loading indicator
 
   @override
   void initState() {
     super.initState();
-    friends = List.from(widget.friends); // Copy the friends list
-    newFriendId = widget.newFriendId; // Initialize with the provided new friend ID
+    _fetchFriends(); // Fetch friends list on page load
   }
 
-  @override
-  void dispose() {
-    if (newFriendId != null) {
-      // Remove the "New!" indicator when the user exits the page
+  Future<void> _fetchFriends() async {
+    final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (currentUserUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: User not logged in')),
+      );
+      return;
+    }
+
+    try {
+      // Fetch the current user's data
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUserUid)
+          .get();
+
+      if (!userDoc.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: User data not found')),
+        );
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Get the list of friend UIDs
+      final friendsIds = List<String>.from(userDoc.data()?['friends'] ?? []);
+
+      // Fetch detailed information for each friend
+      final friendsDetails = await Future.wait(friendsIds.map((id) async {
+        final friendDoc =
+            await FirebaseFirestore.instance.collection('users').doc(id).get();
+        final data = friendDoc.data();
+        return {
+          'id': id,
+          'username': data?['username'] ?? 'Unknown User',
+          'avatar': data?['avatar'] ?? 'https://via.placeholder.com/150',
+        };
+      }));
+
+      // Update the state with the fetched friends
       setState(() {
-        newFriendId = null;
+        friends = friendsDetails;
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error fetching friends list: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching friends list: $e')),
+      );
+      setState(() {
+        isLoading = false;
       });
     }
-    super.dispose();
   }
 
   @override
@@ -48,20 +92,7 @@ class _FriendsListPageState extends State<FriendsListPage> {
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () {
-                    Navigator.of(context).pop(
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 800),
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            const SearchFriendsPage(),
-                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                          return SlideTransition(
-                            position: Tween<Offset>(begin: Offset.zero, end: const Offset(0, 1))
-                                .animate(animation),
-                            child: child,
-                          );
-                        },
-                      ),
-                    );
+                    Navigator.of(context).pop();
                   },
                 ),
               ),
@@ -75,40 +106,35 @@ class _FriendsListPageState extends State<FriendsListPage> {
             const SizedBox(height: 16),
             // Friends Table
             Expanded(
-              child: friends.isEmpty
+              child: isLoading
                   ? const Center(
-                      child: Text(
-                        "Empty friends list",
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : ListView.builder(
-                      itemCount: friends.length,
-                      itemBuilder: (context, index) {
-                        final friend = friends[index];
-                        final isNewFriend = friend['uid'] == newFriendId;
-
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(friend['avatar']),
+                  : friends.isEmpty
+                      ? const Center(
+                          child: Text(
+                            "No friends found.",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
-                          title: Text(
-                            friend['username'],
-                            style: const TextStyle(color: Colors.black),
-                          ),
-                          trailing: isNewFriend
-                              ? const Text(
-                                  "New!",
-                                  style: TextStyle(
-                                    color: Colors.yellow,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                              : null,
-                          tileColor: Colors.white,
-                        );
-                      },
-                    ),
+                        )
+                      : ListView.builder(
+                          itemCount: friends.length,
+                          itemBuilder: (context, index) {
+                            final friend = friends[index];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: NetworkImage(friend['avatar']),
+                              ),
+                              title: Text(
+                                friend['username'],
+                                style: const TextStyle(color: Colors.black),
+                              ),
+                              tileColor: Colors.white,
+                            );
+                          },
+                        ),
             ),
           ],
         ),
