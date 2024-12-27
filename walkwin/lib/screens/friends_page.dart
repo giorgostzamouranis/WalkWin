@@ -94,15 +94,15 @@ class _FriendsPageState extends State<FriendsPage> {
         'isCurrentUser': true, // Flag to identify the logged-in user
       };
 
-      // Check if the user has friends
-      final friends = userDoc['friends'] ?? [];
-      List<Map<String, dynamic>> friendsData = [];
+      // Fetch the current user's friends list
+      final friends = List<String>.from(userDoc['friends'] ?? []);
 
+      // Fetch friends' data
+      List<Map<String, dynamic>> friendsData = [];
       if (friends.isNotEmpty) {
-        // Fetch friends' data only if friends list is not empty
         final friendsSnapshot = await FirebaseFirestore.instance
             .collection('users')
-            .where('uid', whereIn: friends)
+            .where(FieldPath.documentId, whereIn: friends)
             .get();
 
         friendsData = friendsSnapshot.docs.map((doc) {
@@ -127,6 +127,7 @@ class _FriendsPageState extends State<FriendsPage> {
       );
     }
   }
+
 
 
   Future<void> _uploadStory() async {
@@ -590,10 +591,11 @@ Widget _buildWalcoins() {
 
     return Column(
       children: [
+        // Month Name Header
         Padding(
-          padding: const EdgeInsets.only(right: 16.0, left: 16.0, bottom: 4.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Align(
-            alignment: Alignment.topRight,
+            alignment: Alignment.centerRight,
             child: Text(
               monthName,
               style: const TextStyle(
@@ -604,87 +606,96 @@ Widget _buildWalcoins() {
             ),
           ),
         ),
-        Container(
-          width: 335,
-          height: 326,
-          decoration: BoxDecoration(
-            color: const Color(0xFF00E6B0),
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                color: const Color(0xFF004D40),
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: const Center(
-                  child: Text(
-                    'Leaderboard',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+
+        // Leaderboard Container
+        Expanded(
+          child: Container(
+            width: 335,
+            decoration: BoxDecoration(
+              color: const Color(0xFF00E6B0),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Leaderboard Header
+                Container(
+                  color: const Color(0xFF004D40),
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: const Center(
+                    child: Text(
+                      'Leaderboard',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: List.generate(leaderboardData.length, (index) {
-                      final user = leaderboardData[index];
-                      final isCurrentUser = user['isCurrentUser'] ?? false;
-                      final backgroundColor = index % 2 == 0
-                          ? const Color(0xFF00E6B0)
-                          : const Color(0xFF004D40);
 
-                      return Container(
-                        color: isCurrentUser ? Colors.amber : backgroundColor, // Highlight current user
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              padding: const EdgeInsets.all(8.0),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                // Leaderboard List
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: List.generate(leaderboardData.length, (index) {
+                        final user = leaderboardData[index];
+                        final backgroundColor = index % 2 == 0
+                            ? const Color(0xFF00E6B0)
+                            : const Color(0xFF004D40);
+
+                        return Container(
+                          color: backgroundColor,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8.0,
+                            horizontal: 16.0,
+                          ),
+                          child: Row(
+                            children: [
+                              // Rank
+                              SizedBox(
+                                width: 30,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  if (index == 0)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 8.0),
-                                      child: Image.asset(
-                                        'assets/icons/trophy.png',
-                                        width: 24,
-                                        height: 24,
-                                      ),
-                                    ),
-                                  Text(
-                                    user['username'],
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                    ),
+
+                              // Trophy for First Place
+                              if (index == 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: Image.asset(
+                                    'assets/icons/trophy.png',
+                                    width: 24,
+                                    height: 24,
                                   ),
-                                ],
+                                ),
+
+                              // Username
+                              Expanded(
+                                child: Text(
+                                  user['username'],
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Row(
+
+                              // Monthly Steps with Icon
+                              Row(
                                 children: [
                                   Text(
                                     '${user['monthlySteps']}',
@@ -701,20 +712,22 @@ Widget _buildWalcoins() {
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
     );
   }
+
+
   
   // Method for building the action buttons
   Widget _buildActionButtons() {

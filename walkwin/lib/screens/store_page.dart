@@ -5,6 +5,7 @@ import 'challenges_page.dart';
 import 'profile_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'friends_page.dart';
 
 
 class StorePage extends StatelessWidget {
@@ -90,24 +91,74 @@ class StorePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          transitionDuration: const Duration(milliseconds: 400),
-                          reverseTransitionDuration: const Duration(milliseconds: 400),
-                          pageBuilder: (context, animation, secondaryAnimation) =>
-                              const CouponPage(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            const curve = Curves.easeOut;
-                            final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+                    onTap: () async {
+                      final userId = FirebaseAuth.instance.currentUser?.uid;
+                      if (userId == null) return;
 
-                            return FadeTransition(
-                              opacity: curvedAnimation,
-                              child: child,
-                            );
-                          },
-                        ),
-                      );
+                      final couponCost = 5.0; // Cost of the coupon
+                      final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+
+                      try {
+                        final userDoc = await userDocRef.get();
+                        if (!userDoc.exists) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User not found!'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        // Retrieve current coins
+                        double currentCoins = userDoc['coins'] ?? 0.0;
+
+                        if (currentCoins < couponCost) {
+                          // Insufficient coins
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Not enough Walcoins to get this coupon.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        } else {
+                          // Deduct the coupon cost
+                          await userDocRef.update({'coins': currentCoins - couponCost});
+
+                          // Successful purchase
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Coupon purchased! Remaining Walcoins: ${(currentCoins - couponCost).toStringAsFixed(2)}'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+
+                          // Navigate to the Coupon Page
+                          Navigator.of(context).push(
+                            PageRouteBuilder(
+                              transitionDuration: const Duration(milliseconds: 400),
+                              reverseTransitionDuration: const Duration(milliseconds: 400),
+                              pageBuilder: (context, animation, secondaryAnimation) => const CouponPage(),
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                const curve = Curves.easeOut;
+                                final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                                return FadeTransition(
+                                  opacity: curvedAnimation,
+                                  child: child,
+                                );
+                              },
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     child: Container(
                       width: 181,
@@ -134,7 +185,7 @@ class StorePage extends StatelessWidget {
                                 Transform.translate(
                                   offset: const Offset(0, -5),
                                   child: const Text(
-                                    "50",
+                                    "5",
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontWeight: FontWeight.w600,
@@ -154,6 +205,7 @@ class StorePage extends StatelessWidget {
                       ),
                     ),
                   ),
+
                 ],
               ),
             ),
@@ -165,7 +217,7 @@ class StorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-final userId = FirebaseAuth.instance.currentUser?.uid;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
 
 
     return Scaffold(
@@ -286,120 +338,143 @@ final userId = FirebaseAuth.instance.currentUser?.uid;
                 ),
               ),
 Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                color: Colors.teal.shade700,
-                height: 100,
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Walcoins Section
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Walcoins",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                        // StreamBuilder to get coins from Firestore
-                        StreamBuilder<DocumentSnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(userId)
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return CircularProgressIndicator();
-                            }
+  top: 0,
+  left: 0,
+  right: 0,
+  child: Container(
+    color: Colors.teal.shade700,
+    height: 120,
+    padding: const EdgeInsets.only(top: 24.0, bottom: 1.0, left: 16, right: 16), // Adjust vertical spacing
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Walcoins Section
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Walcoins",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(
+              height: 40,
+              width: 40,
+              child: Image.asset(
+                'assets/icons/coin.png',
+                fit: BoxFit.contain,
+              ),
+            ),            
+            // StreamBuilder to get coins from Firestore
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(FirebaseAuth.instance.currentUser?.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                }
 
-                            if (snapshot.hasError) {
-                              return Text('Error: ${snapshot.error}', style: TextStyle(color: Colors.white));
-                            }
+                if (snapshot.hasError) {
+                  return Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.white),
+                  );
+                }
 
-                            if (snapshot.hasData) {
-                              var userData = snapshot.data!;
-                              // Fetch the coins field from the document
-                              double coins = userData['coins'] ?? 0.0;
+                if (snapshot.hasData) {
+                  var userData = snapshot.data!;
+                  // Fetch the coins field from the document
+                  double coins = userData['coins'] ?? 0.0;
 
-                              return Text(
-                                coins.toStringAsFixed(2), // Display with 2 decimal places
-                                style: TextStyle(
-                                  color: Colors.yellowAccent,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              );
-                            } else {
-                              return Text('No Data', style: TextStyle(color: Colors.white));
-                            }
-                          },
-                        ),
-                      ],
+                  return Text(
+                    coins.toStringAsFixed(2), // Display with 2 decimal places
+                    style: const TextStyle(
+                      color: Colors.yellowAccent,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
+                  );
+                } else {
+                  return const Text(
+                    'No Data',
+                    style: TextStyle(color: Colors.white),
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+        // Logo Section
+        const CircleAvatar(
+          radius: 30,
+          backgroundImage: AssetImage('assets/images/logo.png'),
+        ),
+        // Profile Section
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(FirebaseAuth.instance.currentUser?.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                String avatarPath = 'assets/images/profile.png';
+                String username = 'User';
 
-                      //Logo
-                      const CircleAvatar(
-                        radius: 30,
-                        backgroundImage: AssetImage('assets/images/logo.png'),
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  avatarPath = snapshot.data!['avatar'] ?? avatarPath;
+                  username = snapshot.data!['username'] ?? username;
+                }
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 300),
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            Profile(returnPage: const StorePage()),
                       ),
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Colors.white,
-                            backgroundImage: const AssetImage('assets/images/profile.png'),
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  PageRouteBuilder(
-                                    transitionDuration: const Duration(milliseconds: 300),
-                                    reverseTransitionDuration: const Duration(milliseconds: 300),
-                                    pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const StorePage()),
-                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                      final easeOutCurve = Curves.easeOut;
-                                      final slideInAnimation = Tween<Offset>(
-                                        begin: const Offset(0, 1),
-                                        end: Offset.zero,
-                                      ).animate(CurvedAnimation(parent: animation, curve: easeOutCurve));
-
-                                      return SlideTransition(
-                                        position: slideInAnimation,
-                                        child: child,
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-                          const Text(
-                            "Nikos_10",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.white,
+                        backgroundImage: AssetImage(avatarPath),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        username,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
-                ),
-              ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    ),
+  ),
+),
+
               Positioned(
-                top: 100,
+                top: 120,
                 left: 0,
                 right: 0,
                 child: Center(
@@ -495,7 +570,26 @@ Positioned(
             ),
             _NavButton(
               imagePath: 'assets/icons/friend_nav.png',
-              onTap: () {}, // Placeholder for Friends Page or other functionality
+              onTap: () {
+                Navigator.of(context).pushReplacement(
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 400),
+                    pageBuilder: (context, animation, secondaryAnimation) => const FriendsPage(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const curve = Curves.easeOut;
+                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+
+                      return SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(1, 0),
+                          end: Offset.zero,
+                        ).animate(curvedAnimation),
+                        child: child,
+                      );
+                    },
+                  ),
+                );                
+              }, // Placeholder for Friends Page or other functionality
             ),
           ],
         ),

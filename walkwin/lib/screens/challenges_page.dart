@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_page.dart';
 import 'store_page.dart';
 import 'home_page.dart';
-import 'friends_page.dart';  // Import the friends page or wherever you want to navigate
+import 'friends_page.dart'; 
 
 class Challenges extends StatefulWidget {
   const Challenges({Key? key}) : super(key: key);

@@ -20,6 +20,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _usernameController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Method to handle sign-up logic
   void _signUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
@@ -37,17 +38,19 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     try {
-      // Create the user with email and password
+      // Create user account in Firebase Auth
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Update the displayName with the username
+      // Update the display name with username
       await userCredential.user!.updateDisplayName(username);
 
-      // Save user data in Firestore with basic initialization
+      // Get the user ID
       String userId = userCredential.user!.uid;
+
+      // Initialize Firestore document for the user
       final now = DateTime.now();
       final today = "${now.year}-${now.month}-${now.day}";
       final weekOfYear = int.parse((now.weekday / 7).ceil().toString());
@@ -64,75 +67,81 @@ class _SignUpPageState extends State<SignUpPage> {
         'lastDailyReset': today,
         'lastWeeklyReset': weekOfYear,
         'lastMonthlyReset': month,
-        'friends': [], // Initialize an empty list of friends
-        'incomingFriendRequests': [], // Initialize an empty list of incoming friend requests
-        'coins': 5.0, 
+        'friends': [],
+        'coins': 5.0,
         'challenges': [],
       });
 
-      // Add challenges to the newly created user
-      await addChallengeForUser(userId);
+      // Add challenges to the user's profile
+      await _addChallengesForUser(userId);
 
       _showSuccess('Account created successfully!');
 
-      // Navigate to the StepGoalsPage
+      // Navigate to StepGoalsPage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const StepGoalsPage()),
       );
     } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? 'An error occurred during sign up.');
+      _showError(e.message ?? 'An error occurred during sign-up.');
     }
   }
 
+  // Helper to display error messages
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.red))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: const TextStyle(color: Colors.red))),
+    );
   }
 
+  // Helper to display success messages
   void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message, style: const TextStyle(color: Colors.green))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: const TextStyle(color: Colors.green))),
+    );
   }
 
-Future<void> addChallengeForUser(String userId) async {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Method to add challenges for a new user
+  Future<void> _addChallengesForUser(String userId) async {
+    final challenges = [
+      {
+        'title': 'Easy mission!',
+        'goal': 4000,
+        'reward': 5,
+        'completed': false,
+        'description': 'A gentle start! Perfect for beginners.',
+      },
+      {
+        'title': 'Try your limits!',
+        'goal': 8000,
+        'reward': 10,
+        'completed': false,
+        'description': 'Step it up! Push your limits.',
+      },
+      {
+        'title': 'Not tired yet?',
+        'goal': 20000,
+        'reward': 15,
+        'completed': false,
+        'description': 'Think you’ve got more in the tank?',
+      },
+      {
+        'title': 'For brave ones!',
+        'goal': 40000,
+        'reward': 20,
+        'completed': false,
+        'description': 'This is it—the ultimate test of willpower.',
+      },
+    ];
 
-  final challenges = [
-    {
-      'title': 'Easy mission!',
-      'goal': 4000,
-      'reward': 5,
-      'completed': false,
-      'description': 'A gentle start! Perfect for beginners or a casual walk. Earn coins effortlessly while staying active.',
-    },
-    {
-      'title': 'Try your limits!',
-      'goal': 8000,
-      'reward': 10,
-      'completed': false,
-      'description': 'Step it up! A challenge designed to push you further and reward your growing determination.',
-    },
-    {
-      'title': 'Not tired yet?',
-      'goal': 20000, 
-      'reward': 15, 
-      'completed': false,
-      'description': 'Think you’ve got more in the tank? Take on this tougher challenge for bigger rewards and a stronger you!',
-    },
-    {
-      'title': 'For brave ones!',
-      'goal': 40000, 
-      'reward': 20, 
-      'completed': false,
-      'description': 'This is it—the ultimate test of willpower and stamina. Only the boldest will claim the reward. Are you ready?',
-    },
-  ];
-
-  // Add challenges to Firestore under the user's challenges collection
-  for (var challenge in challenges) {
-    await _firestore.collection('users').doc(userId).collection('challenges').add(challenge);
+    for (var challenge in challenges) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('challenges')
+          .add(challenge);
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -165,21 +174,18 @@ Future<void> addChallengeForUser(String userId) async {
                   style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black),
                 ),
                 const SizedBox(height: 30),
-
                 _buildInputBox(
                   controller: _usernameController,
                   hintText: 'Username',
                   obscureText: false,
                 ),
                 const SizedBox(height: 15),
-
                 _buildInputBox(
                   controller: _emailController,
                   hintText: 'Email address',
                   obscureText: false,
                 ),
                 const SizedBox(height: 15),
-
                 _buildInputBox(
                   controller: _passwordController,
                   hintText: 'Password',
@@ -191,7 +197,6 @@ Future<void> addChallengeForUser(String userId) async {
                   },
                 ),
                 const SizedBox(height: 15),
-
                 _buildInputBox(
                   controller: _confirmPasswordController,
                   hintText: 'Confirm password',
@@ -203,7 +208,6 @@ Future<void> addChallengeForUser(String userId) async {
                   },
                 ),
                 const SizedBox(height: 30),
-
                 Center(
                   child: SizedBox(
                     width: 353,
@@ -212,7 +216,9 @@ Future<void> addChallengeForUser(String userId) async {
                       onPressed: _signUp,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: const Text(
                         'Create account',
