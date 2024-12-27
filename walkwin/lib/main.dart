@@ -30,7 +30,7 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyAASVkDIXTZ_...",
+        apiKey: "AIzaSyAASVkDIXTZ_LizUE_8bjvftPGCpFBu-ps",
         authDomain: "walkwin-5d102.firebaseapp.com",
         projectId: "walkwin-5d102",
         storageBucket: "walkwin-5d102.firebasestorage.app",

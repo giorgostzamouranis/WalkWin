@@ -44,6 +44,14 @@ class _ScanFriendPageState extends State<ScanFriendPage> {
           // 2) If found, navigate to that user's profile page
           if (userSnapshot.docs.isNotEmpty) {
             final userData = userSnapshot.docs.first.data();
+
+            // Ensure avatar is a String
+            if (userData['avatar'] != null &&
+                !userData['avatar'].startsWith('http')) {
+              // It's a local asset path
+              userData['avatar'] = userData['avatar']; // Keep it as a String
+            }
+            
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
