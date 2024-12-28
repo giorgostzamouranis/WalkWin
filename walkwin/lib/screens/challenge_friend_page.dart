@@ -37,6 +37,10 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTi
       parent: _controller,
       curve: Curves.easeInOut,
     ));
+  
+    // Call updateChallengeSteps() when the page is loaded to track the challenge progress
+  updateChallengeSteps();
+  
   }
 
   Future<List<Map<String, dynamic>>> fetchFriends() async {
@@ -97,47 +101,116 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTi
   }
 
   void storeChallengeParticipants() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print('No authenticated user');
-      return;
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    print('No authenticated user');
+    return;
+  }
+
+  String userId = user.uid;
+  // Include the user's ID in the participants list
+  List<String> participants = List.from(selectedFriends);
+  participants.add(userId);
+
+  try {
+    // Set initial steps to 0 for each participant
+    Map<String, int> initialSteps = {};
+
+    for (String participantId in participants) {
+      // Set initial steps to 0 for all participants at the start of the challenge
+      initialSteps[participantId] = 0;
     }
 
-    String userId = user.uid;
-    // Include the user's ID in the participants list
-    List<String> participants = List.from(selectedFriends);
-    participants.add(userId);
+    // Create the challenge document for each participant
+    for (String participantId in participants) {
+      await FirebaseFirestore.instance.collection('users').doc(participantId).collection('active_friend_challenges').add({
+        'createdBy': userId,
+        'participants': participants,
+        'stepsGoal': stepsGoal,
+        'initialSteps': initialSteps[participantId],  // Always set to 0 here
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    print('Challenge participants stored successfully');
 
-    try {
-      // Fetch initial daily steps for each participant
-      Map<String, int> initialSteps = {};
+    // Navigate to FriendsPage after storing the document
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => FriendsPage()),
+    );
+  } catch (e) {
+    print('Error storing challenge participants: $e');
+  }
+}
 
-      for (String participantId in participants) {
-        var participantSnapshot = await FirebaseFirestore.instance.collection('users').doc(participantId).get();
-        initialSteps[participantId] = participantSnapshot.data()!['dailySteps'] ?? 0;
-      }
 
-      // Create the challenge document for each participant
-      for (String participantId in participants) {
-        await FirebaseFirestore.instance.collection('users').doc(participantId).collection('active_friend_challenges').add({
-          'createdBy': userId,
-          'participants': participants,
-          'stepsGoal': stepsGoal,
-          'initialSteps': initialSteps[participantId],
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-      print('Challenge participants stored successfully');
 
-      // Navigate to FriendsPage after storing the document
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => FriendsPage()),
-      );
-    } catch (e) {
-      print('Error storing challenge participants: $e');
+
+
+
+void updateChallengeSteps() async {
+  User? user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    print('No authenticated user');
+    return;
+  }
+
+  String userId = user.uid;
+  List<String> participants = [userId];  // Add other participants if necessary
+
+  for (String participantId in participants) {
+    var participantSnapshot = await FirebaseFirestore.instance.collection('users').doc(participantId).get();
+    int currentDailySteps = participantSnapshot.data()!['dailySteps'] ?? 0;
+
+    // Log current daily steps to ensure it's correct
+    print("currentDailySteps for $participantId: $currentDailySteps");
+
+    // Fetch the challenge document for this participant
+    var challengeSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(participantId)
+        .collection('active_friend_challenges')
+        .orderBy('createdAt', descending: true)  // Get the most recent challenge
+        .limit(1)
+        .get();
+
+    if (challengeSnapshot.docs.isNotEmpty) {
+      var challengeData = challengeSnapshot.docs.first.data();
+      int initialSteps = challengeData['initialSteps'] ?? 0;
+
+      // Log initial steps to ensure correct value
+      print("initialSteps for $participantId: $initialSteps");
+
+      // Calculate the increment of steps based on the difference
+      int stepsIncrement = currentDailySteps - initialSteps;
+
+      print('Steps Increment for $participantId: $stepsIncrement');
+
+      // Update the challenge document to reflect the steps increment and update initialSteps
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(participantId)
+          .collection('active_friend_challenges')
+          .doc(challengeSnapshot.docs.first.id)  // Use the specific challenge document
+          .update({
+        'stepsIncrement': stepsIncrement,  // Store the increment value
+        'initialSteps': currentDailySteps,  // Update initial steps with the current daily steps
+      });
+
+      print("Challenge updated with initialSteps: $currentDailySteps for participant $participantId");
     }
   }
+}
+
+
+
+
+
+
+
+
+
+
 
   void toggleFriendsDialog() {
     setState(() {
