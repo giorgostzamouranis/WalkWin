@@ -9,6 +9,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart'; // Correctly import DateFormat
 
 class StepTracker with ChangeNotifier {
+  // =====================
+  // === General Steps ===
+  // =====================
+  
   // Step counts and goals
   int _stepsToday = 0;
   int _weeklySteps = 0;
@@ -17,20 +21,37 @@ class StepTracker with ChangeNotifier {
   double _progressToday = 0.0;
   int _previousSteps = 0;
 
-  // Stream subscriptions
-  StreamSubscription<StepCount>? _pedometerSubscription;
-  StreamSubscription<DocumentSnapshot>? _userDocSubscription;
-  StreamSubscription<User?>? _authSubscription;
-
-  // Flag to track the first pedometer event
-  bool _isFirstPedometerEvent = true;
-
-  // Getters to expose private variables
+  // Getters for general steps
   int get stepsToday => _stepsToday;
   int get weeklySteps => _weeklySteps;
   int get monthlySteps => _monthlySteps;
   int get dailyGoal => _dailyGoal;
   double get progressToday => _progressToday;
+
+  // ============================
+  // === Challenge Tracking ===
+  // ============================
+
+  // Stream subscriptions
+  StreamSubscription<StepCount>? _pedometerSubscription;
+  StreamSubscription<QuerySnapshot>? _activeChallengesSubscription;
+  StreamSubscription<DocumentSnapshot>? _userDocSubscription;
+  StreamSubscription<User?>? _authSubscription;
+
+  // Current user
+  User? _currentUser;
+
+  // Previous total steps to calculate difference
+  int _previousTotalSteps = 0;
+
+  // List of active challenges IDs
+  List<String> _activeChallengeIds = [];
+
+  // Map to store steps per challenge
+  Map<String, int> _stepsPerChallenge = {};
+
+  // Flag to track the first pedometer event
+  bool _isFirstPedometerEvent = true;
 
   // Constructor
   StepTracker() {
@@ -39,45 +60,68 @@ class StepTracker with ChangeNotifier {
 
   /// Initializes the StepTracker by listening to auth changes
   void _init() {
-    // Listen to authentication state changes
-    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((User? user) {
+    _authSubscription =
+        FirebaseAuth.instance.authStateChanges().listen((User? user) {
       if (user == null) {
-        // User is signed out, reset step counts
-        _resetLocalStepCounts();
+        // User is signed out, reset all data
+        _resetAllData();
         _cancelSubscriptions();
       } else {
-        // User is signed in, initialize step tracking for the new user
-        _initializeSteps(user);
+        // User is signed in, initialize step tracking
+        _currentUser = user;
+        _initializeStepTracking(user);
       }
+      notifyListeners();
     });
   }
 
-  /// Resets local step counts and notifies listeners
-  void _resetLocalStepCounts() {
+  /// Resets all local data
+  void _resetAllData() {
+    // Reset general steps
     _stepsToday = 0;
     _weeklySteps = 0;
     _monthlySteps = 0;
     _progressToday = 0.0;
     _previousSteps = 0;
-    _isFirstPedometerEvent = true; // Reset the flag
+
+    // Reset challenge tracking
+    _previousTotalSteps = 0;
+    _activeChallengeIds.clear();
+    _stepsPerChallenge.clear();
+
+    // Reset the flag
+    _isFirstPedometerEvent = true;
+
     notifyListeners();
-    debugPrint("Local step counts have been reset.");
+    debugPrint("All local step data has been reset.");
   }
 
   /// Cancels existing Firestore and Pedometer subscriptions
   void _cancelSubscriptions() {
-    _userDocSubscription?.cancel();
+    _activeChallengesSubscription?.cancel();
     _pedometerSubscription?.cancel();
-    _userDocSubscription = null;
+    _userDocSubscription?.cancel();
+    _activeChallengesSubscription = null;
     _pedometerSubscription = null;
+    _userDocSubscription = null;
     debugPrint("Existing subscriptions have been canceled.");
   }
 
   /// Initializes step tracking for a given user
-  Future<void> _initializeSteps(User user) async {
+  Future<void> _initializeStepTracking(User user) async {
     final userId = user.uid;
 
-    // Set up Firestore subscription
+    // Listen to active challenges where the user is a participant
+    _activeChallengesSubscription = FirebaseFirestore.instance
+        .collection('active_friend_challenges')
+        .where('participants', arrayContains: userId)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .listen((QuerySnapshot snapshot) {
+      _handleActiveChallengesSnapshot(snapshot);
+    });
+
+    // Listen to user's general step counts
     _userDocSubscription = FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -101,111 +145,263 @@ class StepTracker with ChangeNotifier {
         }
 
         notifyListeners(); // Notify listeners to update UI
-        debugPrint("Step counts updated from Firestore for user $userId.");
+        debugPrint("General step counts updated from Firestore for user $userId.");
       } else {
         // If user document does not exist, reset step counts
-        _resetLocalStepCounts();
+        _resetGeneralStepCounts();
       }
     });
 
-    // Check and request permission if not already granted
+    // Request Activity Recognition permission
+    await _requestPermission();
+
+    // Start listening to pedometer
+    _pedometerSubscription =
+        Pedometer.stepCountStream.listen(onStepCount, onError: onStepCountError);
+
+    // Initialize previousTotalSteps
+    _initializePreviousSteps(userId);
+
+    debugPrint("Step tracking initialized for user $userId.");
+  }
+
+  /// Resets general step counts and notifies listeners
+  void _resetGeneralStepCounts() {
+    _stepsToday = 0;
+    _weeklySteps = 0;
+    _monthlySteps = 0;
+    _progressToday = 0.0;
+    _previousSteps = 0;
+    notifyListeners();
+    debugPrint("General step counts have been reset.");
+  }
+
+  /// Requests Activity Recognition permission
+  Future<void> _requestPermission() async {
     final status = await Permission.activityRecognition.status;
     if (status.isDenied || status.isPermanentlyDenied) {
       final newStatus = await Permission.activityRecognition.request();
       if (!newStatus.isGranted) {
         debugPrint("Activity Recognition permission denied.");
-        // Optionally, handle permission denial (e.g., notify listeners)
-        return;
+        // Optionally, notify the user to enable permissions
       }
     }
-
-    // Start listening to pedometer
-    _pedometerSubscription =
-        Pedometer.stepCountStream.listen((StepCount event) {
-      debugPrint("New step count from pedometer: ${event.steps}");
-      _handleStepCount(event.steps);
-    }, onError: (error) {
-      debugPrint("Pedometer Error: $error");
-      // Optionally, handle pedometer errors
-    });
-
-    debugPrint("Step tracking initialized for user $userId.");
   }
 
-  /// Handles new step counts from the pedometer
-  Future<void> _handleStepCount(int stepsFromPedometer) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      debugPrint("No authenticated user found.");
-      return;
-    }
-    final userId = user.uid;
-
-    // If it's the first pedometer event and both stepsToday and previousSteps are 0,
-    // initialize _previousSteps without adding steps
-    if (_isFirstPedometerEvent && _stepsToday == 0 && _previousSteps == 0) {
-      _previousSteps = stepsFromPedometer;
-      _isFirstPedometerEvent = false;
-      notifyListeners();
-      debugPrint("First pedometer event: previousSteps set to $stepsFromPedometer without adding steps.");
-      return;
-    }
-
-    // Compute step difference
-    int difference = stepsFromPedometer - _previousSteps;
-    if (difference < 0) difference = 0; // Prevent negative increments
-
-    // Update Firestore
+  /// Initializes the previous total steps from Firestore
+  Future<void> _initializePreviousSteps(String userId) async {
     final userDocRef =
         FirebaseFirestore.instance.collection('users').doc(userId);
     final userDoc = await userDocRef.get();
-    if (!userDoc.exists) {
-      debugPrint("User document does not exist.");
+
+    if (userDoc.exists) {
+      _previousTotalSteps = userDoc['previousSteps'] ?? 0;
+      debugPrint("Initialized previousTotalSteps: $_previousTotalSteps");
+    } else {
+      debugPrint("User document does not exist. Initializing steps to 0.");
+      _previousTotalSteps = 0;
+    }
+  }
+
+  /// Handles the active challenges snapshot
+  void _handleActiveChallengesSnapshot(QuerySnapshot snapshot) {
+    List<String> updatedChallengeIds = [];
+    Map<String, int> updatedStepsPerChallenge = {};
+
+    for (var doc in snapshot.docs) {
+      String challengeId = doc.id;
+      updatedChallengeIds.add(challengeId);
+      updatedStepsPerChallenge[challengeId] = doc['steps'][_currentUser!.uid] ?? 0;
+    }
+
+    // Determine added and removed challenges
+    List<String> addedChallenges =
+        updatedChallengeIds.where((id) => !_activeChallengeIds.contains(id)).toList();
+    List<String> removedChallenges =
+        _activeChallengeIds.where((id) => !updatedChallengeIds.contains(id)).toList();
+
+    // Update the activeChallengeIds list
+    _activeChallengeIds = updatedChallengeIds;
+
+    // Update stepsPerChallenge map
+    _stepsPerChallenge = updatedStepsPerChallenge;
+
+    notifyListeners();
+
+    debugPrint("Active challenges updated: $_activeChallengeIds");
+  }
+
+  /// Handles new step counts from the pedometer
+  Future<void> onStepCount(StepCount event) async {
+    if (_currentUser == null) {
+      debugPrint("No authenticated user.");
       return;
     }
 
-    int currentDailySteps = userDoc['dailySteps'] ?? 0;
-    int currentWeeklySteps = userDoc['weeklySteps'] ?? 0;
-    int currentMonthlySteps = userDoc['monthlySteps'] ?? 0;
+    String userId = _currentUser!.uid;
+    int currentTotalSteps = event.steps;
 
-    // Calculate if step counters need resetting
-    await _resetStepCountersIfNeeded(userDoc, userDocRef);
+    debugPrint("Pedometer Step Count: $currentTotalSteps");
 
-    // Fetch updated steps after potential reset
-    final updatedUserDoc = await userDocRef.get();
-    currentDailySteps = updatedUserDoc['dailySteps'] ?? 0;
-    currentWeeklySteps = updatedUserDoc['weeklySteps'] ?? 0;
-    currentMonthlySteps = updatedUserDoc['monthlySteps'] ?? 0;
+    // Calculate step difference
+    int stepDifference = currentTotalSteps - _previousTotalSteps;
+    if (stepDifference < 0) {
+      // Handle step count reset (e.g., device restart)
+      debugPrint("Step count reset detected.");
+      stepDifference = 0;
+    }
 
-    // Increment steps
-    int newDailySteps = currentDailySteps + difference;
-    int newWeeklySteps = currentWeeklySteps + difference;
-    int newMonthlySteps = currentMonthlySteps + difference;
+    debugPrint("Step Difference: $stepDifference");
 
-    // Write back to Firestore
-    await userDocRef.update({
-      'dailySteps': newDailySteps,
-      'weeklySteps': newWeeklySteps,
-      'monthlySteps': newMonthlySteps,
-      'previousSteps': stepsFromPedometer, // Store the new pedometer reading
-    });
+    // Update general step counts if applicable
+    if (stepDifference > 0) {
+      await _updateGeneralSteps(stepDifference, userId);
+    }
 
-    // Update local state
-    _stepsToday = newDailySteps;
-    _weeklySteps = newWeeklySteps;
-    _monthlySteps = newMonthlySteps;
-    _progressToday =
-        (_dailyGoal > 0) ? (_stepsToday / _dailyGoal) : 0.0;
-    _previousSteps = stepsFromPedometer;
-    notifyListeners(); // Notify listeners to update UI
+    // Update previousTotalSteps
+    _previousTotalSteps = currentTotalSteps;
 
-    debugPrint("Step counts updated locally and in Firestore for user $userId.");
+    // Update Firestore with new previousSteps
+    final userDocRef =
+        FirebaseFirestore.instance.collection('users').doc(userId);
+    await userDocRef.update({'previousSteps': currentTotalSteps});
 
-    // Check and update challenges
-    await _checkAndUpdateChallenges(newDailySteps, userDocRef, userId);
+    notifyListeners();
   }
 
-  /// Public method to allow external widgets to add steps
+  /// Updates general step counts in Firestore and local state
+  Future<void> _updateGeneralSteps(int stepDifference, String userId) async {
+    final userDocRef =
+        FirebaseFirestore.instance.collection('users').doc(userId);
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot userSnapshot = await transaction.get(userDocRef);
+      if (!userSnapshot.exists) {
+        debugPrint("User document does not exist.");
+        return;
+      }
+
+      Map<String, dynamic> data = userSnapshot.data() as Map<String, dynamic>;
+      int currentDailySteps = data['dailySteps'] ?? 0;
+      int currentWeeklySteps = data['weeklySteps'] ?? 0;
+      int currentMonthlySteps = data['monthlySteps'] ?? 0;
+
+      // Calculate if step counters need resetting
+      await _resetStepCountersIfNeeded(data, userDocRef, transaction);
+
+      // Fetch updated steps after potential reset
+      DocumentSnapshot updatedUserSnapshot = await transaction.get(userDocRef);
+      currentDailySteps = updatedUserSnapshot['dailySteps'] ?? 0;
+      currentWeeklySteps = updatedUserSnapshot['weeklySteps'] ?? 0;
+      currentMonthlySteps = updatedUserSnapshot['monthlySteps'] ?? 0;
+
+      // Increment steps
+      int newDailySteps = currentDailySteps + stepDifference;
+      int newWeeklySteps = currentWeeklySteps + stepDifference;
+      int newMonthlySteps = currentMonthlySteps + stepDifference;
+
+      // Update Firestore
+      transaction.update(userDocRef, {
+        'dailySteps': newDailySteps,
+        'weeklySteps': newWeeklySteps,
+        'monthlySteps': newMonthlySteps,
+      });
+
+      // Update local state
+      _stepsToday = newDailySteps;
+      _weeklySteps = newWeeklySteps;
+      _monthlySteps = newMonthlySteps;
+      _progressToday =
+          (_dailyGoal > 0) ? (_stepsToday / _dailyGoal) : 0.0;
+      _previousSteps = stepDifference;
+
+      debugPrint("General step counts updated for user $userId.");
+    }).catchError((error) {
+      debugPrint("Failed to update general steps: $error");
+    });
+  }
+
+  /// Increments steps for a specific challenge
+  Future<void> _incrementChallengeSteps(String challengeId, int steps) async {
+    final challengeDocRef =
+        FirebaseFirestore.instance.collection('active_friend_challenges').doc(challengeId);
+
+    // Use transaction to ensure atomicity
+    FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot challengeSnapshot = await transaction.get(challengeDocRef);
+      if (!challengeSnapshot.exists) {
+        debugPrint("Challenge $challengeId does not exist.");
+        return;
+      }
+
+      Map<String, dynamic> data = challengeSnapshot.data() as Map<String, dynamic>;
+      Map<String, dynamic> stepsMap = Map<String, dynamic>.from(data['steps'] ?? {});
+
+      String userId = _currentUser!.uid;
+      int currentSteps = stepsMap[userId] ?? 0;
+      int updatedSteps = currentSteps + steps;
+
+      // Update steps
+      stepsMap[userId] = updatedSteps;
+      transaction.update(challengeDocRef, {
+        'steps': stepsMap,
+      });
+
+      debugPrint(
+          "Challenge $challengeId: Updated steps for user $userId to $updatedSteps.");
+
+      // Check if the challenge is completed by this user
+      if (updatedSteps >= data['stepsGoal'] && data['isActive'] == true) {
+        // Mark the challenge as completed for this user
+        debugPrint("User $userId has met the step goal for challenge $challengeId.");
+
+        // Example: Update a 'completedParticipants' list
+        List<dynamic> completedParticipants = List.from(data['completedParticipants'] ?? []);
+        if (!completedParticipants.contains(userId)) {
+          completedParticipants.add(userId);
+          transaction.update(challengeDocRef, {
+            'completedParticipants': completedParticipants,
+          });
+          debugPrint("User $userId marked as completed in challenge $challengeId.");
+        }
+
+        // Optionally, check if all participants have completed the challenge
+        List<dynamic> participants = data['participants'] ?? [];
+        List<dynamic> allCompleted = data['completedParticipants'] ?? [];
+
+        if (allCompleted.length >= participants.length) {
+          // Mark the challenge as inactive
+          transaction.update(challengeDocRef, {
+            'isActive': false,
+          });
+          debugPrint("Challenge $challengeId has been marked as inactive.");
+        }
+
+        // Example: Award coins to the user
+        // Fetch user's current coins
+        DocumentSnapshot userSnapshot = await transaction.get(
+            FirebaseFirestore.instance.collection('users').doc(userId));
+        double currentCoins = userSnapshot['coins']?.toDouble() ?? 0.0;
+        double reward = (data['winnerReward'] as num?)?.toDouble() ?? 5.0;
+
+        // Update user's coins
+        transaction.update(
+            FirebaseFirestore.instance.collection('users').doc(userId),
+            {'coins': currentCoins + reward});
+
+        debugPrint("Awarded $reward coins to user $userId for completing challenge $challengeId.");
+      }
+    }).catchError((error) {
+      debugPrint("Failed to update challenge steps: $error");
+    });
+  }
+
+  /// Handles pedometer errors
+  void onStepCountError(error) {
+    debugPrint("Pedometer Error: $error");
+    // Optionally, handle pedometer errors here
+  }
+
+  /// Public method to allow external widgets to add steps manually
   Future<void> addSteps(int stepsToAdd) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -247,52 +443,22 @@ class StepTracker with ChangeNotifier {
     _monthlySteps = newMonthlySteps;
     _progressToday =
         (_dailyGoal > 0) ? (_stepsToday / _dailyGoal) : 0.0;
-    _previousSteps = newDailySteps; // Prevent double-counting
+    _previousTotalSteps = newDailySteps; // Update previousTotalSteps to prevent double-counting
     notifyListeners(); // Notify listeners to update UI
 
     debugPrint("Manually added $stepsToAdd steps for user $userId.");
-  }
 
-  /// Checks and updates challenges based on the new step count
-  Future<void> _checkAndUpdateChallenges(
-      int steps, DocumentReference userDocRef, String userId) async {
-    // Fetch challenges where 'completed' is false
-    final challengesSnapshot = await userDocRef
-        .collection('challenges')
-        .where('completed', isEqualTo: false)
-        .get();
-
-    if (challengesSnapshot.docs.isEmpty) {
-      debugPrint('No incomplete challenges found for user $userId.');
-      return;
-    }
-
-    for (var doc in challengesSnapshot.docs) {
-      var challenge = doc.data();
-      debugPrint('Challenge Data: $challenge'); // Debugging print
-
-      // Ensure 'goal' field exists and is an int
-      int goal = challenge['goal'] ?? 0;
-      if (steps >= goal) {
-        debugPrint('Challenge reached goal for user $userId!');
-        // Mark challenge as completed
-        await doc.reference.update({'completed': true});
-
-        // Add coins to user's total
-        double reward = (challenge['reward'] as num).toDouble();
-        double currentCoins =
-            (await userDocRef.get())['coins']?.toDouble() ?? 0.0;
-
-        await userDocRef.update({'coins': currentCoins + reward});
-
-        debugPrint('Challenge completed and coins updated for user $userId.');
+    // Update steps in active challenges
+    if (_activeChallengeIds.isNotEmpty) {
+      for (String challengeId in _activeChallengeIds) {
+        await _incrementChallengeSteps(challengeId, stepsToAdd);
       }
     }
   }
 
   /// Resets step counters if a new day, week, or month has started
   Future<void> _resetStepCountersIfNeeded(
-      DocumentSnapshot userDoc, DocumentReference userDocRef) async {
+      Map<String, dynamic> data, DocumentReference userDocRef, Transaction transaction) async {
     final now = DateTime.now();
     final today = DateFormat('yyyy-MM-dd').format(now);
     final weekOfYear = _computeWeekOfYear(now);
@@ -300,23 +466,23 @@ class StepTracker with ChangeNotifier {
 
     Map<String, dynamic> updates = {};
 
-    if (userDoc['lastDailyReset'] != today) {
+    if (data['lastDailyReset'] != today) {
       updates['dailySteps'] = 0;
       updates['lastDailyReset'] = today;
     }
 
-    if (userDoc['lastWeeklyReset'] != weekOfYear) {
+    if (data['lastWeeklyReset'] != weekOfYear) {
       updates['weeklySteps'] = 0;
       updates['lastWeeklyReset'] = weekOfYear;
     }
 
-    if (userDoc['lastMonthlyReset'] != month) {
+    if (data['lastMonthlyReset'] != month) {
       updates['monthlySteps'] = 0;
       updates['lastMonthlyReset'] = month;
     }
 
     if (updates.isNotEmpty) {
-      await userDocRef.update(updates);
+      transaction.update(userDocRef, updates);
       debugPrint("Step counters reset as needed for user.");
     }
   }
@@ -337,6 +503,7 @@ class StepTracker with ChangeNotifier {
   @override
   void dispose() {
     _pedometerSubscription?.cancel();
+    _activeChallengesSubscription?.cancel();
     _userDocSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();

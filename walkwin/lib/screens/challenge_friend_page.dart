@@ -1,9 +1,12 @@
+// lib/screens/challenge_friend_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'friends_page.dart';
+import 'active_challenges_page.dart';
 import 'dart:ui';
-import 'package:flutter/services.dart';  // Import for TextInputFormatter
+import 'package:flutter/services.dart'; // Import for TextInputFormatter
 
 class ChallengeFriendPage extends StatefulWidget {
   const ChallengeFriendPage({Key? key}) : super(key: key);
@@ -12,15 +15,17 @@ class ChallengeFriendPage extends StatefulWidget {
   _ChallengeFriendPageState createState() => _ChallengeFriendPageState();
 }
 
-class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTickerProviderStateMixin {
+class _ChallengeFriendPageState extends State<ChallengeFriendPage>
+    with SingleTickerProviderStateMixin {
   List<String> selectedFriends = [];
   late Future<List<Map<String, dynamic>>> friendsFuture;
+  String challengeName = '';
   int stepsGoal = 0;
 
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   bool showFriendsDialog = false;
-  bool showStepsGoalDialog = false;
+  bool showDetailsDialog = false;
 
   @override
   void initState() {
@@ -37,10 +42,9 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTi
       parent: _controller,
       curve: Curves.easeInOut,
     ));
-  
-    // Call updateChallengeSteps() when the page is loaded to track the challenge progress
-  updateChallengeSteps();
-  
+
+    // Removed the undefined method call
+    // updateChallengeSteps();
   }
 
   Future<List<Map<String, dynamic>>> fetchFriends() async {
@@ -53,7 +57,8 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTi
     String userId = user.uid;
     print('Fetching friends for user: $userId');
 
-    final docSnapshot = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final docSnapshot =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
 
     if (!docSnapshot.exists) {
       print('User document does not exist');
@@ -70,7 +75,8 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTi
 
     List<Map<String, dynamic>> friendsList = [];
     for (String friendId in friends) {
-      final friendSnapshot = await FirebaseFirestore.instance.collection('users').doc(friendId).get();
+      final friendSnapshot =
+          await FirebaseFirestore.instance.collection('users').doc(friendId).get();
       if (friendSnapshot.exists) {
         friendsList.add({
           'id': friendId,
@@ -100,115 +106,82 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage> with SingleTi
     return querySnapshot.docs.isNotEmpty;
   }
 
-  void storeChallengeParticipants() async {
-  User? user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    print('No authenticated user');
-    return;
-  }
-
-  String userId = user.uid;
-  // Include the user's ID in the participants list
-  List<String> participants = List.from(selectedFriends);
-  participants.add(userId);
-
-  try {
-    // Set initial steps to 0 for each participant
-    Map<String, int> initialSteps = {};
-
-    for (String participantId in participants) {
-      // Set initial steps to 0 for all participants at the start of the challenge
-      initialSteps[participantId] = 0;
+  void storeChallengeParticipants(String challengeName, int stepsGoal) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('No authenticated user');
+      return;
     }
 
-    // Create the challenge document for each participant
-    for (String participantId in participants) {
-      await FirebaseFirestore.instance.collection('users').doc(participantId).collection('active_friend_challenges').add({
-        'createdBy': userId,
-        'participants': participants,
+    String userId = user.uid;
+    // Include the user's ID in the participants list
+    List<String> participants = List.from(selectedFriends);
+    participants.add(userId); // Ensure the creator is included
+
+    try {
+      // Prepare steps data for each participant
+      Map<String, dynamic> stepsData = {};
+      for (String participantId in participants) {
+        stepsData[participantId] = 0; // Initialize steps to 0
+      }
+
+      // Create the challenge document in 'active_challenges' collection
+      DocumentReference challengeRef =
+          FirebaseFirestore.instance.collection('active_challenges').doc();
+
+      await challengeRef.set({
+        'challengeName': challengeName,
         'stepsGoal': stepsGoal,
-        'initialSteps': initialSteps[participantId],  // Always set to 0 here
+        'participants': participants,
+        'steps': stepsData, // Tracks steps per participant
+        'createdBy': userId,
         'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-    print('Challenge participants stored successfully');
-
-    // Navigate to FriendsPage after storing the document
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => FriendsPage()),
-    );
-  } catch (e) {
-    print('Error storing challenge participants: $e');
-  }
-}
-
-
-
-
-
-
-void updateChallengeSteps() async {
-  User? user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    print('No authenticated user');
-    return;
-  }
-
-  String userId = user.uid;
-  List<String> participants = [userId];  // Add other participants if necessary
-
-  for (String participantId in participants) {
-    var participantSnapshot = await FirebaseFirestore.instance.collection('users').doc(participantId).get();
-    int currentDailySteps = participantSnapshot.data()!['dailySteps'] ?? 0;
-
-    // Log current daily steps to ensure it's correct
-    print("currentDailySteps for $participantId: $currentDailySteps");
-
-    // Fetch the challenge document for this participant
-    var challengeSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(participantId)
-        .collection('active_friend_challenges')
-        .orderBy('createdAt', descending: true)  // Get the most recent challenge
-        .limit(1)
-        .get();
-
-    if (challengeSnapshot.docs.isNotEmpty) {
-      var challengeData = challengeSnapshot.docs.first.data();
-      int initialSteps = challengeData['initialSteps'] ?? 0;
-
-      // Log initial steps to ensure correct value
-      print("initialSteps for $participantId: $initialSteps");
-
-      // Calculate the increment of steps based on the difference
-      int stepsIncrement = currentDailySteps - initialSteps;
-
-      print('Steps Increment for $participantId: $stepsIncrement');
-
-      // Update the challenge document to reflect the steps increment and update initialSteps
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(participantId)
-          .collection('active_friend_challenges')
-          .doc(challengeSnapshot.docs.first.id)  // Use the specific challenge document
-          .update({
-        'stepsIncrement': stepsIncrement,  // Store the increment value
-        'initialSteps': currentDailySteps,  // Update initial steps with the current daily steps
+        'isActive': true,
+        'winnerReward': 5.0, // Ensure this field exists if used
       });
 
-      print("Challenge updated with initialSteps: $currentDailySteps for participant $participantId");
+      print('Challenge stored successfully with ID: ${challengeRef.id}');
+
+      // Add this challenge to each participant's active challenges
+      for (String participantId in participants) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(participantId)
+            .collection('active_friend_challenges')
+            .doc(challengeRef.id)
+            .set({
+          'challengeName': challengeName,
+          'stepsGoal': stepsGoal,
+          'participants': participants,
+          'steps': 0, // Initialize user's steps to 0
+          'createdBy': userId,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isActive': true,
+          'winnerReward': 5.0, // Ensure this field exists if used
+        });
+      }
+
+      // **Do not reset challengeName and stepsGoal here**
+      // **Allow the user to press Start**
+
+      // Optionally, you can provide feedback or navigate to another page
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Challenge created successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('Error storing challenge participants: $e');
+      // Show an error message to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creating challenge: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
-}
-
-
-
-
-
-
-
-
 
 
 
@@ -223,15 +196,164 @@ void updateChallengeSteps() async {
     });
   }
 
-  void toggleStepsGoalDialog() {
+  void toggleDetailsDialog() {
     setState(() {
-      showStepsGoalDialog = !showStepsGoalDialog;
-      if (showStepsGoalDialog) {
+      showDetailsDialog = !showDetailsDialog;
+      if (showDetailsDialog) {
         _controller.forward();
       } else {
         _controller.reverse();
       }
     });
+  }
+
+  void showSetChallengeDetailsDialog() {
+    final _formKey = GlobalKey<FormState>();
+    String tempChallengeName = '';
+    String tempStepsGoal = '';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Set Challenge Details'),
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Set Challenge Name
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Set Challenge Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      tempChallengeName = value.trim();
+                    },
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a challenge name';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 20),
+                  // Set Steps Goal
+                  TextFormField(
+                    decoration: InputDecoration(
+                      labelText: 'Set Steps Goal',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    onChanged: (value) {
+                      tempStepsGoal = value.trim();
+                    },
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a steps goal';
+                      }
+                      if (int.tryParse(value.trim()) == null ||
+                          int.parse(value.trim()) <= 0) {
+                        return 'Please enter a valid number greater than zero';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              // Inside your AlertDialog's ElevatedButton onPressed:
+              onPressed: () async {
+                if (_formKey.currentState!.validate()) {
+                  // Check for duplicate challenges
+                  bool duplicateExists =
+                      await checkForDuplicateChallenges(tempChallengeName);
+
+                  if (duplicateExists) {
+                    // Show error message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'A challenge with this name already exists in your active challenges.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  } else {
+                    // Proceed to store the challenge
+                    storeChallengeParticipants(
+                        tempChallengeName, int.parse(tempStepsGoal));
+                    Navigator.of(context).pop(); // Close the dialog only
+                  }
+                }
+              },
+
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal.shade700,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> checkForDuplicateChallenges(String challengeName) async {
+    // Fetch all active challenges of the current user
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('No authenticated user');
+      return false;
+    }
+
+    String userId = user.uid;
+
+    QuerySnapshot userChallengesSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('active_friend_challenges')
+        .where('challengeName', isEqualTo: challengeName)
+        .get();
+
+    if (userChallengesSnapshot.docs.isNotEmpty) {
+      // A challenge with the same name exists
+      return true;
+    }
+
+    return false;
+  }
+
+
+  void showSetChallengeDetails() {
+    if (selectedFriends.isEmpty) {
+      // Show error if no friends selected
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select at least one friend to challenge.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show the Set Challenge Details Dialog
+    showSetChallengeDetailsDialog();
   }
 
   @override
@@ -242,6 +364,10 @@ void updateChallengeSteps() async {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if both friends and challenge details are set
+    bool canStartChallenge =
+        selectedFriends.isNotEmpty && challengeName.isNotEmpty && stepsGoal > 0;
+
     return Scaffold(
       backgroundColor: Colors.teal.shade700,
       appBar: AppBar(
@@ -261,91 +387,106 @@ void updateChallengeSteps() async {
       body: Stack(
         children: [
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Button 1: Friends to Challenge
-                ElevatedButton(
-                  onPressed: toggleFriendsDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40), // Set button background color
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(
-                        color: Colors.black, // Add bold border
-                        width: 2.0,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Button 1: Friends to Challenge
+                  ElevatedButton(
+                    onPressed: toggleFriendsDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF004D40), // Set button background color
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(
+                          color: Colors.black, // Add bold border
+                          width: 2.0,
+                        ),
                       ),
+                      minimumSize: const Size(double.infinity, 50),
                     ),
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                  child: const Text(
-                    'Friends to Challenge',
-                    style: TextStyle(
-                      fontSize: 25,
-                      color: Colors.white, // Set button text color to white
-                      fontWeight: FontWeight.bold, // Make button text bold
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Button 2: Set Challenges Goal
-                ElevatedButton(
-                  onPressed: toggleStepsGoalDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF004D40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(
-                        color: Colors.black,
-                        width: 2.0,
-                      ),
-                    ),
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                  child: const Text(
-                    'Set Challenge Goal',
-                    style: TextStyle(
-                      fontSize: 25,
-                      color: Colors.white, // Set button text color to white
-                      fontWeight: FontWeight.bold, // Make button text bold
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      "Winner's reward: 5",
+                    child: const Text(
+                      'Friends to Challenge',
                       style: TextStyle(
                         fontSize: 25,
-                        color: Colors.black, // Set button text color to white
+                        color: Colors.white, // Set button text color to white
                         fontWeight: FontWeight.bold, // Make button text bold
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Image.asset(
-                      'assets/icons/coin.png',
-                      width: 30, // Set the width of the coin image
-                      height: 30, // Set the height of the coin image
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                  ),
+                  const SizedBox(height: 20),
 
-                // Start Button
-                ElevatedButton(
-                  onPressed: () {
-                    // Check if there is an active challenge before starting a new one
-                    hasActiveChallenge().then((activeChallengeExists) {
+                  // Button 2: Set Challenge Details
+                  ElevatedButton(
+                    onPressed: showSetChallengeDetails,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF004D40),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(
+                          color: Colors.black,
+                          width: 2.0,
+                        ),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'Set Challenge Details',
+                      style: TextStyle(
+                        fontSize: 25,
+                        color: Colors.white, // Set button text color to white
+                        fontWeight: FontWeight.bold, // Make button text bold
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "Winner's reward: 5",
+                        style: TextStyle(
+                          fontSize: 25,
+                          color: Colors.black, // Set button text color to white
+                          fontWeight: FontWeight.bold, // Make button text bold
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Image.asset(
+                        'assets/icons/coin.png',
+                        width: 30, // Set the width of the coin image
+                        height: 30, // Set the height of the coin image
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Start Button
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (!canStartChallenge) {
+                        // Show error if prerequisites are not met
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                                'Please select friends and set challenge details before starting.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Check if there is an active challenge before starting a new one
+                      bool activeChallengeExists = await hasActiveChallenge();
                       if (activeChallengeExists) {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
                             title: Text('Active Challenge'),
-                            content: Text('There is already an activated challenge.'),
+                            content: Text(
+                                'There is already an active challenge. Please complete it before starting a new one.'),
                             actions: [
                               ElevatedButton(
                                 onPressed: () {
@@ -373,67 +514,41 @@ void updateChallengeSteps() async {
                           ),
                         );
                       } else {
-                        if (stepsGoal == 0) {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text('Invalid Steps Goal'),
-                              content: Text('The steps goal must be greater than zero.'),
-                              actions: [
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.teal.shade700,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: BorderSide(
-                                        color: Colors.black,
-                                        width: 2.0,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'OK',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          storeChallengeParticipants();
-                        }
+                        // Navigate to Active Challenges Page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => ActiveChallengesPage()),
+                        );
                       }
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.yellowAccent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: const BorderSide(
-                        color: Colors.black,
-                        width: 0.5,
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: canStartChallenge
+                          ? Colors.yellowAccent
+                          : Colors.grey, // Disable color if not ready
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: Colors.black,
+                          width: 0.5,
+                        ),
+                      ),
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text(
+                      'Start',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.black, // Set button text color to white
+                        fontWeight: FontWeight.bold, // Make button text bold
                       ),
                     ),
                   ),
-                  child: const Text(
-                    'Start',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.black, // Set button text color to white
-                      fontWeight: FontWeight.bold, // Make button text bold
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          if (showFriendsDialog || showStepsGoalDialog)
+          if (showFriendsDialog)
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
               child: Container(
@@ -458,7 +573,8 @@ void updateChallengeSteps() async {
                         children: [
                           AppBar(
                             leading: IconButton(
-                              icon: Icon(Icons.arrow_back, color: Colors.black),
+                              icon:
+                                  Icon(Icons.arrow_back, color: Colors.black),
                               onPressed: toggleFriendsDialog,
                             ),
                             backgroundColor: Colors.teal.shade700,
@@ -473,12 +589,20 @@ void updateChallengeSteps() async {
                             child: FutureBuilder<List<Map<String, dynamic>>>(
                               future: friendsFuture,
                               builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
                                   return CircularProgressIndicator();
                                 } else if (snapshot.hasError) {
                                   return Text('Error: ${snapshot.error}');
-                                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                                  return Text('No friends found.');
+                                } else if (!snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  return Text(
+                                    'No friends found.',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 18,
+                                    ),
+                                  );
                                 } else {
                                   return StatefulBuilder(
                                     builder: (context, setState) {
@@ -486,16 +610,20 @@ void updateChallengeSteps() async {
                                         width: double.maxFinite,
                                         child: ListView(
                                           shrinkWrap: true,
-                                          children: snapshot.data!.map((friend) {
+                                          children:
+                                              snapshot.data!.map((friend) {
                                             return CheckboxListTile(
                                               title: Text(friend['username']),
-                                              value: selectedFriends.contains(friend['id']),
+                                              value: selectedFriends
+                                                  .contains(friend['id']),
                                               onChanged: (bool? value) {
                                                 setState(() {
                                                   if (value == true) {
-                                                    selectedFriends.add(friend['id']);
+                                                    selectedFriends
+                                                        .add(friend['id']);
                                                   } else {
-                                                    selectedFriends.remove(friend['id']);
+                                                    selectedFriends
+                                                        .remove(friend['id']);
                                                   }
                                                 });
                                               },
@@ -528,89 +656,6 @@ void updateChallengeSteps() async {
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (showStepsGoalDialog)
-            SlideTransition(
-              position: _offsetAnimation,
-              child: Visibility(
-                visible: showStepsGoalDialog,
-                child: Center(
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    height: MediaQuery.of(context).size.height * 0.4,
-                    child: Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15.0),
-                      ),
-                      elevation: 5,
-                      child: Column(
-                        children: [
-                          AppBar(
-                            leading: IconButton(
-                              icon: Icon(Icons.arrow_back, color: Colors.black),
-                              onPressed: toggleStepsGoalDialog,
-                            ),
-                            backgroundColor: Colors.teal.shade700,
-                            elevation: 0,
-                            title: Text(
-                              'Set Steps Goal',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            centerTitle: true,
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                children: [
-                                  TextField(
-                                    // Ensure only numbers are accepted
-                                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                    controller: TextEditingController(text: stepsGoal > 0 ? stepsGoal.toString() : ''),
-                                    keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter steps goal',
-                                    ),
-                                    onChanged: (value) {
-                                      stepsGoal = int.tryParse(value) ?? 0;
-                                    },
-                                  ),
-                                  const SizedBox(height: 20),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        stepsGoal = int.tryParse(TextEditingController(text: stepsGoal > 0 ? stepsGoal.toString() : '').text) ?? 0;
-                                      });
-                                      toggleStepsGoalDialog();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.teal.shade700,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        side: BorderSide(
-                                          color: Colors.black,
-                                          width: 2.0,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'OK',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ),

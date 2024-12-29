@@ -1,3 +1,5 @@
+// lib/screens/active_challenges_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,17 +12,20 @@ class ActiveChallengesPage extends StatefulWidget {
   _ActiveChallengesPageState createState() => _ActiveChallengesPageState();
 }
 
-class _ActiveChallengesPageState extends State<ActiveChallengesPage> with SingleTickerProviderStateMixin {
-  late Future<Map<String, dynamic>?> activeChallengeFuture;
-  List<Map<String, dynamic>> participantsDetails = [];
+class _ActiveChallengesPageState extends State<ActiveChallengesPage>
+    with SingleTickerProviderStateMixin {
+  late Future<List<Map<String, dynamic>>> activeChallengesFuture;
   late AnimationController _controller;
   late Animation<Offset> _offsetAnimation;
   bool showParticipants = false;
+  List<Map<String, dynamic>> selectedChallengeParticipants = [];
+  String selectedChallengeName = '';
+  int selectedChallengeStepsGoal = 0;
 
   @override
   void initState() {
     super.initState();
-    activeChallengeFuture = fetchActiveChallenge();
+    activeChallengesFuture = fetchActiveChallenges();
     _controller = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -34,51 +39,177 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
     ));
   }
 
-  Future<Map<String, dynamic>?> fetchActiveChallenge() async {
+  /// Fetches active challenges where the current user is a participant and the challenge is active.
+  /// For each challenge, it fetches the current user's dailySteps from their user document.
+  Future<List<Map<String, dynamic>>> fetchActiveChallenges() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       print('No authenticated user');
-      return null;
+      return [];
     }
 
     String userId = user.uid;
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('active_friend_challenges')
-        .get();
 
-    if (querySnapshot.docs.isEmpty) {
-      return null;
-    } else {
-      var challengeData = querySnapshot.docs.first.data();
-      await fetchParticipantsDetails(challengeData['participants']);
-      return challengeData;
-    }
-  }
+    try {
+      QuerySnapshot challengesSnapshot = await FirebaseFirestore.instance
+          .collection('active_challenges')
+          .where('participants', arrayContains: userId)
+          .where('isActive', isEqualTo: true)
+          .get();
 
-  Future<void> fetchParticipantsDetails(List<dynamic> participants) async {
-    participantsDetails.clear();
-    for (String participantId in participants) {
-      var participantSnapshot = await FirebaseFirestore.instance.collection('users').doc(participantId).get();
-      if (participantSnapshot.exists) {
-        participantsDetails.add({
-          'id': participantId,
-          'username': participantSnapshot.data()!['username'],
+      List<Map<String, dynamic>> challenges = [];
+
+      for (var doc in challengesSnapshot.docs) {
+        var data = doc.data() as Map<String, dynamic>;
+        String challengeId = doc.id;
+        String challengeName = data['challengeName'] ?? 'No Name';
+        int stepsGoal = data['stepsGoal'] ?? 0;
+        List<String> participants = List<String>.from(data['participants'] ?? []);
+
+        // Fetch dailySteps for the current user from their user document
+        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+
+        int userDailySteps = 0;
+        if (userSnapshot.exists) {
+          var userData = userSnapshot.data() as Map<String, dynamic>;
+          print('User Data for $userId: $userData'); // Debugging
+
+          // Use the correct field name "dailySteps"
+          if (userData.containsKey('dailySteps')) {
+            var stepsField = userData['dailySteps'];
+            if (stepsField is int) {
+              userDailySteps = stepsField;
+            } else if (stepsField is double) {
+              userDailySteps = stepsField.toInt();
+            } else {
+              print('Unexpected type for dailySteps field: ${stepsField.runtimeType}');
+            }
+          } else {
+            print('No "dailySteps" field found for userId: $userId');
+          }
+        } else {
+          print('User document does not exist for userId: $userId');
+        }
+
+        challenges.add({
+          'challengeId': challengeId,
+          'challengeName': challengeName,
+          'stepsGoal': stepsGoal,
+          'steps': userDailySteps, // Updated field
+          'participants': participants,
         });
       }
+
+      print('Fetched active challenges: $challenges'); // Debugging
+      return challenges;
+    } catch (e) {
+      print('Error fetching active challenges: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching active challenges: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return [];
     }
-    setState(() {});
   }
 
-  void toggleParticipants() {
-    setState(() {
-      showParticipants = !showParticipants;
-      if (showParticipants) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
+  /// Toggles the participants overlay to show detailed information about each participant.
+  /// Fetches each participant's username and their dailySteps from their user documents.
+  void toggleParticipantsOverlay(
+      String challengeId, String challengeName, int stepsGoal) async {
+    if (challengeId.isEmpty) return;
+
+    try {
+      // Fetch the challenge document to get the list of participants
+      DocumentSnapshot challengeSnapshot = await FirebaseFirestore.instance
+          .collection('active_challenges')
+          .doc(challengeId)
+          .get();
+
+      if (!challengeSnapshot.exists) {
+        print('Challenge document does not exist');
+        return;
       }
+
+      var challengeData = challengeSnapshot.data() as Map<String, dynamic>;
+      List<String> participants = List<String>.from(challengeData['participants'] ?? []);
+
+      List<Map<String, dynamic>> participantsDetails = [];
+
+      // Fetch user data for each participant concurrently using Future.wait
+      List<Future<Map<String, dynamic>>> fetchUserFutures = participants.map((participantId) async {
+        DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(participantId)
+            .get();
+
+        if (userSnapshot.exists) {
+          var userData = userSnapshot.data() as Map<String, dynamic>;
+          String username = userData['username'] ?? 'Unknown';
+          int participantDailySteps = 0;
+
+          // Use the correct field name "dailySteps"
+          if (userData.containsKey('dailySteps')) {
+            var stepsField = userData['dailySteps'];
+            if (stepsField is int) {
+              participantDailySteps = stepsField;
+            } else if (stepsField is double) {
+              participantDailySteps = stepsField.toInt();
+            } else {
+              print('Unexpected type for dailySteps field: ${stepsField.runtimeType}');
+            }
+          } else {
+            print('No "dailySteps" field found for participantId: $participantId');
+          }
+
+          print('Participant: $participantId, Username: $username, Daily Steps: $participantDailySteps'); // Debugging
+
+          return {
+            'username': username,
+            'steps': participantDailySteps, // Updated field
+          };
+        } else {
+          // Fallback if user document not found
+          print('User document not found for participantId: $participantId');
+          return {
+            'username': 'Unknown',
+            'steps': 0,
+          };
+        }
+      }).toList();
+
+      participantsDetails = await Future.wait(fetchUserFutures);
+
+      setState(() {
+        selectedChallengeParticipants = participantsDetails;
+        selectedChallengeName = challengeName;
+        selectedChallengeStepsGoal = stepsGoal;
+        showParticipants = true;
+        _controller.forward();
+      });
+    } catch (e) {
+      print('Error fetching participants details: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching participants details: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// Closes the participants overlay.
+  void closeParticipantsOverlay() {
+    setState(() {
+      showParticipants = false;
+      selectedChallengeParticipants = [];
+      selectedChallengeName = '';
+      selectedChallengeStepsGoal = 0;
+      _controller.reverse();
     });
   }
 
@@ -88,6 +219,7 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
     super.dispose();
   }
 
+  /// Builds the main UI of the Active Challenges page.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,12 +237,17 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
         ),
         backgroundColor: Colors.teal.shade700,
         elevation: 0,
+        title: Text(
+          'Active Challenges',
+          style: TextStyle(color: Colors.black),
+        ),
+        centerTitle: true,
       ),
       body: Stack(
         children: [
           Center(
-            child: FutureBuilder<Map<String, dynamic>?>(
-              future: activeChallengeFuture,
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: activeChallengesFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return CircularProgressIndicator();
@@ -123,7 +260,7 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
                       fontWeight: FontWeight.bold,
                     ),
                   );
-                } else if (!snapshot.hasData || snapshot.data == null) {
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Text(
                     'No active challenges found.',
                     style: TextStyle(
@@ -133,69 +270,86 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
                     ),
                   );
                 } else {
-                  Map<String, dynamic> challengeData = snapshot.data!;
-                  int stepsGoal = challengeData['stepsGoal'];
-
-                  return Padding(
+                  List<Map<String, dynamic>> challenges = snapshot.data!;
+                  return ListView.builder(
                     padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Card(
-                          color: Color(0xFF004D40),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          elevation: 5,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Active Challenge',
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                    itemCount: challenges.length,
+                    itemBuilder: (context, index) {
+                      var challenge = challenges[index];
+                      return Card(
+                        color: Color(0xFF004D40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                        ),
+                        elevation: 5,
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Challenge Name
+                              Text(
+                                challenge['challengeName'],
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Steps Goal: $stepsGoal',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    
-                                    ElevatedButton(
-                                      onPressed: toggleParticipants,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color.fromARGB(255, 255, 218, 56),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Show Participants',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold),
-                                      ),
+                              ),
+                              SizedBox(height: 10),
+                              // Steps: a / b with icon
+                              Row(
+                                children: [
+                                  Text(
+                                    'Steps: ${challenge['steps']} / ${challenge['stepsGoal']}',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      color: Colors.white,
                                     ),
-                                  ],
+                                  ),
+                                  SizedBox(width: 10),
+                                  Image.asset(
+                                    'assets/icons/steps.png',
+                                    width: 24,
+                                    height: 24,
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10),
+                              // Show Participants Button
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    toggleParticipantsOverlay(
+                                      challenge['challengeId'],
+                                      challenge['challengeName'],
+                                      challenge['stepsGoal'],
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Color.fromARGB(255, 255, 218, 56),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Show Participants',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 }
               },
@@ -215,7 +369,7 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
               child: Center(
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.8,
-                  height: MediaQuery.of(context).size.height * 0.4,
+                  height: MediaQuery.of(context).size.height * 0.6,
                   child: Card(
                     color: Color(0xFF004D40),
                     shape: RoundedRectangleBorder(
@@ -226,8 +380,9 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
                       children: [
                         AppBar(
                           leading: IconButton(
-                            icon: Icon(Icons.arrow_back, color: Colors.black),
-                            onPressed: toggleParticipants,
+                            icon:
+                                Icon(Icons.arrow_back, color: Colors.black),
+                            onPressed: closeParticipantsOverlay,
                           ),
                           backgroundColor: Color(0xFF004D40),
                           elevation: 0,
@@ -240,11 +395,18 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage> with Single
                         Expanded(
                           child: ListView.builder(
                             padding: const EdgeInsets.all(8.0),
-                            itemCount: participantsDetails.length,
+                            itemCount: selectedChallengeParticipants.length,
                             itemBuilder: (context, index) {
+                              var participant = selectedChallengeParticipants[index];
                               return ListTile(
+                                leading: Image.asset(
+                                  'assets/icons/steps.png',
+                                  width: 24,
+                                  height: 24,
+                                  color: Colors.white,
+                                ),
                                 title: Text(
-                                  participantsDetails[index]['username'],
+                                  '${participant['username']}: ${participant['steps']} / $selectedChallengeStepsGoal',
                                   style: TextStyle(
                                     fontSize: 20,
                                     color: Colors.white,
