@@ -1,3 +1,5 @@
+// lib/screens/sign_in_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_page.dart';
@@ -20,23 +22,29 @@ class _SignInState extends State<SignIn> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
+    debugPrint("Attempting to sign in with Email: $email");
+
     if (email.isEmpty || password.isEmpty) {
       _showError('Please fill in all fields.');
+      debugPrint("Sign in failed: Fields are empty.");
       return;
     }
 
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
+      debugPrint("User signed in successfully.");
+
       _showSuccess('Logged in successfully!');
 
-    // Navigate to HomePage
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
-
+      // Navigate to HomePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+      debugPrint("Navigated to HomePage after successful sign-in.");
     } on FirebaseAuthException catch (e) {
       _showError(e.message ?? 'An error occurred during login.');
+      debugPrint("Sign in error: ${e.message}");
     }
   }
 
@@ -51,9 +59,6 @@ class _SignInState extends State<SignIn> {
       SnackBar(content: Text(message, style: TextStyle(color: Colors.green))),
     );
   }
-
-
-
 
 
 

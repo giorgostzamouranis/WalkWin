@@ -1,7 +1,12 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:device_preview/device_preview.dart'; // Import DevicePreview
+import 'package:provider/provider.dart'; // <-- Import Provider
+
+import 'step_tracker.dart'; // <-- Import StepTracker
 
 // Import your screens
 import 'screens/welcome_page.dart';
@@ -15,7 +20,7 @@ import 'screens/incoming_friend_request_page.dart';
 import 'screens/search_friends_page.dart';
 import 'screens/friends_profile_page.dart';
 import 'screens/friends_list_page.dart';
-import 'screens/scan_friends_page.dart';    // <--- Make sure to import your QR Scan page
+import 'screens/scan_friends_page.dart'; // <--- Make sure to import your QR Scan page
 import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
@@ -30,13 +35,13 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyAASVkDIXTZ_LizUE_8bjvftPGCpFBu-ps",
-        authDomain: "walkwin-5d102.firebaseapp.com",
-        projectId: "walkwin-5d102",
-        storageBucket: "walkwin-5d102.firebasestorage.app",
-        messagingSenderId: "613299618395",
-        appId: "1:613299618395:web:2d534c14cedd484e89757e",
-        measurementId: "G-7R8J4RJMP2",
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID",
+        measurementId: "YOUR_MEASUREMENT_ID",
       ),
     );
   } else {
@@ -46,7 +51,15 @@ void main() async {
   runApp(
     DevicePreview(
       enabled: !kReleaseMode, // Enable DevicePreview only in debug mode
-      builder: (context) => const MyApp(),
+      builder: (context) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider<StepTracker>(
+            create: (_) => StepTracker(),
+          ),
+          // Add other providers here if needed
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -89,7 +102,8 @@ class MyApp extends StatelessWidget {
         if (settings.name == '/incomingFriendRequest') {
           final args = settings.arguments as Map<String, dynamic>?;
           if (args == null || !args.containsKey('requesterData')) {
-            throw Exception("Missing requesterData for IncomingFriendRequestPage");
+            throw Exception(
+                "Missing requesterData for IncomingFriendRequestPage");
           }
           return MaterialPageRoute(
             builder: (context) => IncomingFriendRequestPage(
@@ -112,6 +126,9 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+
+
 
 
 

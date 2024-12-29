@@ -27,7 +27,8 @@ dependencies:
     git:
       url: https://github.com/JuliusCanute/qr_code_scanner.git
       ref: master 
-  permission_handler: ^10.2.0   
+  permission_handler: ^10.2.0
+  provider: ^6.0.5    
 
 
 

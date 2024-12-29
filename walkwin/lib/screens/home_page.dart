@@ -1,192 +1,32 @@
+// lib/screens/home_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // <-- Import Provider
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; // For date and time handling
-import 'package:pedometer/pedometer.dart';
-import 'package:permission_handler/permission_handler.dart';
+import '../step_tracker.dart'; // <-- Import StepTracker
+
+// Import your other screens
 import 'store_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
 import 'friends_page.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  int _stepsToday = 0;
-  int _weeklySteps = 0;
-  int _monthlySteps = 0;
-  int _dailyGoal = 5000;
-  double _progressToday = 0.0;
-  late Stream<StepCount> _stepCountStream;
-
-  @override
-  void initState() {
-    super.initState();
-    _requestActivityRecognitionPermission(); // <-- Request permission first
-    _initializeSteps();
-  }
-
-  Future<void> _requestActivityRecognitionPermission() async {
-    // 1) Check current permission status
-    final status = await Permission.activityRecognition.status;
-
-    // 2) If not granted, request it
-    if (status.isDenied) {
-      final newStatus = await Permission.activityRecognition.request();
-
-      // 3) If granted, proceed with pedometer
-      if (newStatus.isGranted) {
-        _initializeSteps();
-      } else {
-        // Show a message or handle denial gracefully
-        debugPrint("Activity Recognition permission denied");
-      }
-    } else if (status.isGranted) {
-      // Already granted
-      _initializeSteps();
-    } else {
-      // Handle other states, like permanently denied, restricted, etc.
-      debugPrint("Permission for activity recognition not granted.");
-    }
-  }
-
-
-  Future<void> _initializeSteps() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
-
-    // Listen for Firestore updates
-    FirebaseFirestore.instance.collection('users').doc(userId).snapshots().listen((snapshot) {
-      if (snapshot.exists) {
-        final data = snapshot.data()!;
-        setState(() {
-          _stepsToday = data['dailySteps'] ?? 0;
-          _weeklySteps = data['weeklySteps'] ?? 0;
-          _monthlySteps = data['monthlySteps'] ?? 0;
-          _dailyGoal = data['dailyGoal'] ?? 5000;
-          _progressToday = _stepsToday / _dailyGoal;
-        });
-      }
-    });
-
-    // Start listening to pedometer
-    _stepCountStream = Pedometer.stepCountStream;
-    _stepCountStream.listen((StepCount event) {
-      debugPrint("New step count from pedometer: ${event.steps}");
-      _updateSteps(event.steps);
-    }, onError: (error) {
-      debugPrint("Pedometer Error: $error");
-    });
-  }
-
-
-
-  Future<void> _resetStepCountersIfNeeded() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
-
-    final now = DateTime.now();
-    final today = DateFormat('yyyy-MM-dd').format(now);
-    final weekOfYear = int.parse(DateFormat('w').format(now));
-    final month = DateFormat('yyyy-MM').format(now);
-
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-    if (!userDoc.exists) return;
-
-    Map<String, dynamic> updates = {};
-
-    if (userDoc['lastDailyReset'] != today) {
-      updates['dailySteps'] = 0;
-      updates['lastDailyReset'] = today;
-    }
-
-    if (userDoc['lastWeeklyReset'] != weekOfYear) {
-      updates['weeklySteps'] = 0;
-      updates['lastWeeklyReset'] = weekOfYear;
-    }
-
-    if (userDoc['lastMonthlyReset'] != month) {
-      updates['monthlySteps'] = 0;
-      updates['lastMonthlyReset'] = month;
-    }
-
-    if (updates.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('users').doc(userId).update(updates);
-    }
-  }
-
-
-
-  Future<void> _updateSteps(int stepsFromPedometer) async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
-
-    // 1) Check if daily/weekly/monthly counters need resetting
-    await _resetStepCountersIfNeeded();
-
-    // 2) Retrieve the user doc
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .get();
-    if (!userDoc.exists) return;
-
-    // 3) ***Important***: Use the difference between the new pedometer reading and the last reading
-    // so you only count "new" steps.
-    // Suppose you store it in Firestore as 'previousSteps'
-    int lastReading = userDoc.data()?['previousSteps'] ?? 0;
-    int difference = stepsFromPedometer - lastReading;
-
-    // If difference is negative (e.g., phone reboot or pedometer reset),
-    // you might want to skip or reset. We'll clamp it at 0 to avoid subtracting steps.
-    if (difference < 0) {
-      difference = 0;
-    }
-
-    // 4) Current Firestore counters
-    int currentDailySteps = userDoc['dailySteps'] ?? 0;
-    int currentWeeklySteps = userDoc['weeklySteps'] ?? 0;
-    int currentMonthlySteps = userDoc['monthlySteps'] ?? 0;
-
-    // 5) Increase them by the difference
-    int newDailySteps = currentDailySteps + difference;
-    int newWeeklySteps = currentWeeklySteps + difference;
-    int newMonthlySteps = currentMonthlySteps + difference;
-
-    // 6) Write back to Firestore
-    await FirebaseFirestore.instance.collection('users').doc(userId).update({
-      'dailySteps': newDailySteps,
-      'weeklySteps': newWeeklySteps,
-      'monthlySteps': newMonthlySteps,
-      'previousSteps': stepsFromPedometer, // Store the new pedometer reading
-    });
-
-    // 7) Update local state
-    setState(() {
-      _stepsToday = newDailySteps;
-      _weeklySteps = newWeeklySteps;
-      _monthlySteps = newMonthlySteps;
-      _progressToday = _stepsToday / _dailyGoal;
-    });
-
-    // 8) Check challenges if you like
-    await _checkAndUpdateChallenges(newDailySteps);
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Access StepTracker via Provider
+    final stepTracker = Provider.of<StepTracker>(context);
+
     return Scaffold(
       backgroundColor: Colors.teal.shade700,
       body: SafeArea(
         child: Column(
           children: [
             // Top Section
-            _buildTopBar(),
+            _buildTopBar(context),
             const SizedBox(height: 16),
 
             // Steps and Circular Widgets
@@ -196,12 +36,12 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 30),
                   CircularStepsWidget(
                     title: "Steps Today",
-                    steps: _stepsToday.toString(),
+                    steps: stepTracker.stepsToday.toString(),
                     size: 270,
                     titleFontSize: 20,
                     stepsFontSize: 30,
                     iconSize: 50,
-                    progress: _progressToday.clamp(0.0, 1.0),
+                    progress: stepTracker.progressToday.clamp(0.0, 1.0),
                   ),
                   const SizedBox(height: 40),
                   Row(
@@ -209,44 +49,36 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       CircularStepsWidget(
                         title: "This Week",
-                        steps: _weeklySteps.toString(),
+                        steps: stepTracker.weeklySteps.toString(),
                         size: 180,
                         titleFontSize: 16,
                         stepsFontSize: 24,
                         iconSize: 40,
-                        progress: (_weeklySteps / (_dailyGoal * 7)).clamp(0.0, 1.0),
+                        progress: (stepTracker.weeklySteps /
+                                (stepTracker.dailyGoal * 7))
+                            .clamp(0.0, 1.0),
                       ),
                       CircularStepsWidget(
                         title: "This Month",
-                        steps: _monthlySteps.toString(),
+                        steps: stepTracker.monthlySteps.toString(),
                         size: 140,
                         titleFontSize: 12,
                         stepsFontSize: 18,
                         iconSize: 30,
-                        progress: (_monthlySteps / (_dailyGoal * 30)).clamp(0.0, 1.0),
+                        progress: (stepTracker.monthlySteps /
+                                (stepTracker.dailyGoal * 30))
+                            .clamp(0.0, 1.0),
                       ),
 
+                      /////////////////// TEST /////////////////
 
-
-
-            /////////////////// TEST /////////////////
-
-             ///////////// Add this button below the CircularStepsWidget in the body section
+                      // Add this button below the CircularStepsWidget in the body section
                       ElevatedButton(
                         onPressed: () {
-                          incrementSteps(4000);  // Increase steps by 100
+                          incrementSteps(context, 4000); // Increase steps by 4000
                         },
-                        child: Text('Increase Steps by 4000'),
+                        child: const Text('Increase Steps by 4000'),
                       ),
-
-
-
-
-
-
-
-
-
                     ],
                   ),
                 ],
@@ -261,85 +93,85 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildWalcoins(),
+          _buildWalcoins(context),
           const CircleAvatar(
             radius: 30,
             backgroundImage: AssetImage('assets/images/logo.png'),
           ),
-          _buildProfile(),
+          _buildProfile(context),
         ],
       ),
     );
   }
 
-Widget _buildWalcoins() {
-  // Get the current user's ID
-  final userId = FirebaseAuth.instance.currentUser?.uid;
+  Widget _buildWalcoins(BuildContext context) {
+    // Get the current user's ID
+    final userId = FirebaseAuth.instance.currentUser?.uid;
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        "Walcoins",
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Walcoins",
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      ),
-      SizedBox(
-        height: 40,
-        width: 40,
-        child: Image.asset(
-          'assets/icons/coin.png',
-          fit: BoxFit.contain,
+        SizedBox(
+          height: 40,
+          width: 40,
+          child: Image.asset(
+            'assets/icons/coin.png',
+            fit: BoxFit.contain,
+          ),
         ),
-      ),
-      // StreamBuilder to listen to the coins value in Firestore
-      StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return CircularProgressIndicator();
-          }
+        // StreamBuilder to listen to the coins value in Firestore
+        StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const CircularProgressIndicator();
+            }
 
-          if (snapshot.hasError) {
-            return Text('Error: ${snapshot.error}');
-          }
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            }
 
-          if (snapshot.hasData) {
-            var userData = snapshot.data!;
-            // Get the coins from Firestore
-            double coins = userData['coins'] ?? 0.0;
+            if (snapshot.hasData) {
+              var userData = snapshot.data!;
+              // Get the coins from Firestore
+              double coins = (userData['coins'] as num?)?.toDouble() ?? 0.0;
 
-            return Text(
-              coins.toStringAsFixed(2), // Display coins with two decimal points
-              style: TextStyle(
-                color: Colors.yellowAccent,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            );
-          } else {
-            return Text('No Data');
-          }
-        },
-      ),
-    ],
-  );
-}
+              return Text(
+                coins.toStringAsFixed(2), // Display coins with two decimal points
+                style: const TextStyle(
+                  color: Colors.yellowAccent,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            } else {
+              return const Text('No Data');
+            }
+          },
+        ),
+      ],
+    );
+  }
 
-  Widget _buildProfile() {
+  Widget _buildProfile(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
@@ -347,7 +179,7 @@ Widget _buildWalcoins() {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
+          return const CircularProgressIndicator();
         }
 
         if (snapshot.hasError) {
@@ -355,11 +187,12 @@ Widget _buildWalcoins() {
         }
 
         if (!snapshot.hasData || !snapshot.data!.exists) {
-          return Text('No user data');
+          return const Text('No user data');
         }
 
         String username = snapshot.data!['username'] ?? 'No Username';
-        String avatarPath = snapshot.data!['avatar'] ?? 'assets/images/profile.png';
+        String avatarPath =
+            snapshot.data!['avatar'] ?? 'assets/images/Avatar1.png';
 
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -370,7 +203,8 @@ Widget _buildWalcoins() {
                   context,
                   PageRouteBuilder(
                     transitionDuration: const Duration(milliseconds: 300),
-                    pageBuilder: (context, animation, secondaryAnimation) => Profile(returnPage: const HomePage()),
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        Profile(returnPage: const HomePage()),
                   ),
                 );
               },
@@ -383,7 +217,7 @@ Widget _buildWalcoins() {
             const SizedBox(height: 8),
             Text(
               username,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.black,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -423,28 +257,30 @@ Widget _buildWalcoins() {
           ),
           _NavButton(
             imagePath: 'assets/icons/friend_nav.png',
-           onTap: ()
-             {
-                Navigator.of(context).pushReplacement(
-                  PageRouteBuilder(
-                    transitionDuration: const Duration(milliseconds: 400),
-                    pageBuilder: (context, animation, secondaryAnimation) => const FriendsPage(),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      const curve = Curves.easeOut;
-                      final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+            onTap: () {
+              Navigator.of(context).pushReplacement(
+                PageRouteBuilder(
+                  transitionDuration: const Duration(milliseconds: 400),
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const FriendsPage(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    const curve = Curves.easeOut;
+                    final curvedAnimation =
+                        CurvedAnimation(parent: animation, curve: curve);
 
-                      return SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(1, 0),
-                          end: Offset.zero,
-                        ).animate(curvedAnimation),
-                        child: child,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(1, 0),
+                        end: Offset.zero,
+                      ).animate(curvedAnimation),
+                      child: child,
+                    );
+                  },
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -455,9 +291,11 @@ Widget _buildWalcoins() {
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 400),
         pageBuilder: (context, animation, secondaryAnimation) => page,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        transitionsBuilder:
+            (context, animation, secondaryAnimation, child) {
           const curve = Curves.easeOut;
-          final curvedAnimation = CurvedAnimation(parent: animation, curve: curve);
+          final curvedAnimation =
+              CurvedAnimation(parent: animation, curve: curve);
 
           return SlideTransition(
             position: Tween<Offset>(
@@ -471,109 +309,15 @@ Widget _buildWalcoins() {
     );
   }
 
-
-
-
-
-
-/////////// TEST INCREASE STEPS //////
-// Function to simulate step increment
-void incrementSteps(int incrementBy) async {
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-  if (userId != null) {
-    // Get the current steps from Firestore
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
-    int currentSteps = 0;
-    if (userDoc.exists) {
-      currentSteps = userDoc['dailySteps'] ?? 0;  // Get current steps from Firestore (default to 0 if not available)
-    }
-
-    // Increment the steps by the specified value
-    int newStepCount = currentSteps + incrementBy;
-
-    // Update the Firestore document with the new step count
-    await FirebaseFirestore.instance.collection('users').doc(userId).update({
-      'dailySteps': newStepCount,
-    });
-
-    // Update the local state to reflect the changes
-    setState(() {
-      _stepsToday = newStepCount;
-      _progressToday = _stepsToday / _dailyGoal;
-    });
-
-    // You can also call _checkAndUpdateChallenges here if you'd like to check and update challenges right after increasing the steps
-    await _checkAndUpdateChallenges(newStepCount);
+  /////////// TEST INCREASE STEPS ////////
+  // Function to simulate step increment
+  Future<void> incrementSteps(BuildContext context, int incrementBy) async {
+    final stepTracker = Provider.of<StepTracker>(context, listen: false);
+    await stepTracker.addSteps(incrementBy); // Use the public method
   }
 }
 
-
-
-
-
-
-
-
-}
-
-
-
-////////////////////// This function checks the user's steps against the goals of their incomplete challenges. If the user meets the goal, it marks the challenge as completed and updates their total coins. /////////////////
-
-Future<void> _checkAndUpdateChallenges(int steps) async {
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-
-  if (userId == null) return;
-
-  final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
-  if (!userDoc.exists) return;
-
-  // Check if the user has completed any challenges
-  final challengesSnapshot = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(userId)
-      .collection('challenges')
-      .where('completed', isEqualTo: false) // Only incomplete challenges
-      .get();
-
-  if (challengesSnapshot.docs.isEmpty) {
-    print('No incomplete challenges found.');
-    return;
-  }
-
-  for (var doc in challengesSnapshot.docs) {
-    var challenge = doc.data();
-    print('Challenge Data: $challenge'); // Debugging print
-
-    // Ensure goal field exists
-    int goal = challenge['goal'] ?? 0;
-    if (steps >= goal) {
-      print('Challenge reached goal!'); // Debugging print
-      // Mark challenge as completed
-      await doc.reference.update({
-        'completed': true,
-      });
-
-      // Add coins to user's total
-      double reward = challenge['reward'] ?? 0.0;
-      double currentCoins = userDoc['coins'] ?? 0.0;
-
-      await FirebaseFirestore.instance.collection('users').doc(userId).update({
-        'coins': currentCoins + reward,
-      });
-
-      print('Challenge completed and coins updated');
-    }
-  }
-}
-
-
-
-
-
-
+/// Custom Widget to display circular step counts
 class CircularStepsWidget extends StatelessWidget {
   final String title;
   final String steps;
@@ -655,6 +399,7 @@ class CircularStepsWidget extends StatelessWidget {
   }
 }
 
+/// Custom Navigation Button Widget
 class _NavButton extends StatelessWidget {
   final String imagePath;
   final VoidCallback onTap;
@@ -692,6 +437,3 @@ class _NavButton extends StatelessWidget {
     );
   }
 }
-
-
-

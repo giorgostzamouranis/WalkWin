@@ -1,3 +1,5 @@
+// lib/screens/welcome_page.dart
+
 import 'package:flutter/material.dart';
 import 'sign_in_page.dart';
 import 'sign_up_page.dart';
@@ -73,10 +75,11 @@ class WelcomePage extends StatelessWidget {
                         height: 56,
                         child: ElevatedButton(
                           onPressed: (){
+                            debugPrint("Navigating to SignInPage.");
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => SignIn(),
+                                builder: (context) => const SignIn(),
                               ),
                             );
                           },
@@ -114,10 +117,11 @@ class WelcomePage extends StatelessWidget {
                         height: 56,
                         child: ElevatedButton(
                           onPressed: (){
+                            debugPrint("Navigating to SignUpPage.");
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => SignUpPage(),
+                                builder: (context) => const SignUpPage(),
                               ),
                             );
                           },
