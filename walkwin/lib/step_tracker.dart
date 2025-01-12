@@ -243,82 +243,112 @@ class StepTracker with ChangeNotifier {
 
     debugPrint("Pedometer Step Count: $currentTotalSteps");
 
-    // Calculate step difference
-    int stepDifference = currentTotalSteps - _previousTotalSteps;
-    if (stepDifference < 0) {
-      // Handle step count reset (e.g., device restart)
-      debugPrint("Step count reset detected.");
-      stepDifference = 0;
+    // If previousSteps is 0, initialize it without adding steps
+    if (_previousTotalSteps == 0) {
+      _previousTotalSteps = currentTotalSteps;
+
+      // Update Firestore with new previousSteps
+      final userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(userId);
+      await userDocRef.update({'previousSteps': currentTotalSteps});
+
+      debugPrint("Initialized previousSteps to $currentTotalSteps for user $userId.");
+    } else {
+      // Calculate step difference
+      int stepDifference = currentTotalSteps - _previousTotalSteps;
+      if (stepDifference < 0) {
+        // Handle step count reset (e.g., device restart)
+        debugPrint("Step count reset detected.");
+        stepDifference = 0;
+      }
+
+      debugPrint("Step Difference: $stepDifference");
+
+      // Update general step counts if applicable
+      if (stepDifference > 0) {
+        await _updateGeneralSteps(stepDifference, userId);
+      }
+
+      // Update previousTotalSteps
+      _previousTotalSteps = currentTotalSteps;
+
+      // Update Firestore with new previousSteps
+      final userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(userId);
+      await userDocRef.update({'previousSteps': currentTotalSteps});
+
+      notifyListeners();
     }
-
-    debugPrint("Step Difference: $stepDifference");
-
-    // Update general step counts if applicable
-    if (stepDifference > 0) {
-      await _updateGeneralSteps(stepDifference, userId);
-    }
-
-    // Update previousTotalSteps
-    _previousTotalSteps = currentTotalSteps;
-
-    // Update Firestore with new previousSteps
-    final userDocRef =
-        FirebaseFirestore.instance.collection('users').doc(userId);
-    await userDocRef.update({'previousSteps': currentTotalSteps});
-
-    notifyListeners();
   }
 
-  /// Updates general step counts in Firestore and local state
+
   Future<void> _updateGeneralSteps(int stepDifference, String userId) async {
-    final userDocRef =
-        FirebaseFirestore.instance.collection('users').doc(userId);
+    final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+
     await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // Step 1: Read the user document
       DocumentSnapshot userSnapshot = await transaction.get(userDocRef);
+
       if (!userSnapshot.exists) {
         debugPrint("User document does not exist.");
         return;
       }
 
       Map<String, dynamic> data = userSnapshot.data() as Map<String, dynamic>;
+
       int currentDailySteps = data['dailySteps'] ?? 0;
       int currentWeeklySteps = data['weeklySteps'] ?? 0;
       int currentMonthlySteps = data['monthlySteps'] ?? 0;
 
-      // Calculate if step counters need resetting
-      await _resetStepCountersIfNeeded(data, userDocRef, transaction);
+      final now = DateTime.now();
+      final today = DateFormat('yyyy-MM-dd').format(now);
+      final weekOfYear = _computeWeekOfYear(now);
+      final month = DateFormat('yyyy-MM').format(now);
 
-      // Fetch updated steps after potential reset
-      DocumentSnapshot updatedUserSnapshot = await transaction.get(userDocRef);
-      currentDailySteps = updatedUserSnapshot['dailySteps'] ?? 0;
-      currentWeeklySteps = updatedUserSnapshot['weeklySteps'] ?? 0;
-      currentMonthlySteps = updatedUserSnapshot['monthlySteps'] ?? 0;
+      Map<String, dynamic> updates = {};
 
-      // Increment steps
+      // Check and reset daily steps if needed
+      if (data['lastDailyReset'] != today) {
+        updates['dailySteps'] = 0;
+        updates['lastDailyReset'] = today;
+        currentDailySteps = 0;
+      }
+
+      // Check and reset weekly steps if needed
+      if (data['lastWeeklyReset'] != weekOfYear) {
+        updates['weeklySteps'] = 0;
+        updates['lastWeeklyReset'] = weekOfYear;
+        currentWeeklySteps = 0;
+      }
+
+      // Check and reset monthly steps if needed
+      if (data['lastMonthlyReset'] != month) {
+        updates['monthlySteps'] = 0;
+        updates['lastMonthlyReset'] = month;
+        currentMonthlySteps = 0;
+      }
+
+      // Prepare step increments
       int newDailySteps = currentDailySteps + stepDifference;
       int newWeeklySteps = currentWeeklySteps + stepDifference;
       int newMonthlySteps = currentMonthlySteps + stepDifference;
 
-      // Update Firestore
-      transaction.update(userDocRef, {
+      updates.addAll({
         'dailySteps': newDailySteps,
         'weeklySteps': newWeeklySteps,
         'monthlySteps': newMonthlySteps,
+        'previousSteps': stepDifference, // Assuming this is intended
       });
 
-      // Update local state
-      _stepsToday = newDailySteps;
-      _weeklySteps = newWeeklySteps;
-      _monthlySteps = newMonthlySteps;
-      _progressToday =
-          (_dailyGoal > 0) ? (_stepsToday / _dailyGoal) : 0.0;
-      _previousSteps = stepDifference;
+      // Execute all updates in a single transaction update
+      transaction.update(userDocRef, updates);
 
       debugPrint("General step counts updated for user $userId.");
     }).catchError((error) {
       debugPrint("Failed to update general steps: $error");
     });
   }
+
 
   /// Increments steps for a specific challenge
   Future<void> _incrementChallengeSteps(String challengeId, int steps) async {
