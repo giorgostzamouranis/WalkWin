@@ -1,5 +1,3 @@
-// lib/screens/welcome_page.dart
-
 import 'package:flutter/material.dart';
 import 'sign_in_page.dart';
 import 'sign_up_page.dart';
@@ -85,7 +83,7 @@ class WelcomePage extends StatelessWidget {
                           },
                           
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black, // Button color
+                            backgroundColor: Colors.black,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -94,7 +92,7 @@ class WelcomePage extends StatelessWidget {
                             'Sign In',
                             style: TextStyle(
                               fontSize: 17,
-                              color: Colors.white, // Text color
+                              color: Colors.white,
                             ),
                           ),
                         
@@ -126,7 +124,7 @@ class WelcomePage extends StatelessWidget {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black, // Button color
+                            backgroundColor: Colors.black,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -135,7 +133,7 @@ class WelcomePage extends StatelessWidget {
                             'Create account',
                             style: TextStyle(
                               fontSize: 17,
-                              color: Colors.white, // Text color
+                              color: Colors.white,
                             ),
                           ),
                         ),

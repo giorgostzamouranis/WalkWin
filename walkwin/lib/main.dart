@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
-import 'package:device_preview/device_preview.dart'; // Import DevicePreview
+//import 'package:device_preview/device_preview.dart'; // Import DevicePreview
 import 'package:provider/provider.dart'; // <-- Import Provider
 
 import 'step_tracker.dart'; // <-- Import StepTracker
@@ -20,7 +20,7 @@ import 'screens/incoming_friend_request_page.dart';
 import 'screens/search_friends_page.dart';
 import 'screens/friends_profile_page.dart';
 import 'screens/friends_list_page.dart';
-import 'screens/scan_friends_page.dart'; // <--- Make sure to import your QR Scan page
+import 'screens/scan_friends_page.dart';
 import 'screens/profile_page.dart';
 import 'screens/step_goals_page.dart';
 import 'screens/change_step_goals_page.dart';
@@ -54,7 +54,6 @@ void main() async {
       ChangeNotifierProvider<StepTracker>(
         create: (_) => StepTracker(),
       ),
-      // Add other providers here if needed
     ],
     child: const MyApp(),
   ),
@@ -91,9 +90,8 @@ class MyApp extends StatelessWidget {
               stories: [],
               initialIndex: 0,
             ),
-        '/scanFriends': (context) => const ScanFriendPage(), // <--- For QR scanning
+        '/scanFriends': (context) => const ScanFriendPage(),
       },
-      // For any routes that need arguments, use onGenerateRoute
       onGenerateRoute: (settings) {
         if (settings.name == '/incomingFriendRequest') {
           final args = settings.arguments as Map<String, dynamic>?;

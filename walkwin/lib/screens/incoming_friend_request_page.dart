@@ -119,13 +119,13 @@ Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) as
             );
             return SlideTransition(
               position: Tween<Offset>(
-                begin: const Offset(0, -1), // Start off-screen (top of the screen)
-                end: Offset.zero, // End at the current position
+                begin: const Offset(0, -1), 
+                end: Offset.zero, 
               ).animate(curvedAnimation),
               child: child,
             );
           },
-          transitionDuration: const Duration(milliseconds: 800), // 800ms duration
+          transitionDuration: const Duration(milliseconds: 800), 
         ),
       );
     } catch (e) {
@@ -159,7 +159,7 @@ Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) as
         children: [
           // Title
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.1, // Adjust the top position as needed
+            top: MediaQuery.of(context).size.height * 0.1, 
             left: 0,
             right: 0,
             child: const Text(
@@ -174,7 +174,7 @@ Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) as
           ),
           // Avatar
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.2, // Adjust the top position as needed
+            top: MediaQuery.of(context).size.height * 0.2, 
             left: 0,
             right: 0,
             child: Center(
@@ -191,7 +191,7 @@ Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) as
           ),
           // Username
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.45, // Adjust the top position as needed
+            top: MediaQuery.of(context).size.height * 0.45, 
             left: 0,
             right: 0,
             child: Center(
@@ -217,7 +217,7 @@ Future<void> _acceptFriendRequest(String? requesterUid, BuildContext context) as
           ),
           // Buttons
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.50, // Adjust the top position as needed
+            top: MediaQuery.of(context).size.height * 0.50, 
             left: 0,
             right: 0,
             child: Center(

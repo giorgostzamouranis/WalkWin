@@ -338,9 +338,8 @@ class StepTracker with ChangeNotifier {
   }
 
   /// Handles pedometer errors
-  void onStepCountError(Object? error) { // Changed to Object? to make it nullable
+  void onStepCountError(Object? error) {
     debugPrint("Pedometer Error: $error");
-    // Optionally, handle pedometer errors here
   }
 
 
@@ -398,7 +397,6 @@ class StepTracker with ChangeNotifier {
     final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
-      // Step 1: Read the user document
       DocumentSnapshot userSnapshot = await transaction.get(userDocRef);
 
       if (!userSnapshot.exists) {
@@ -499,7 +497,6 @@ class StepTracker with ChangeNotifier {
               .doc(userId)
               .collection('challenges')
               .doc(challengeId);
-              //.update({'completed': true});
 
         await FirebaseFirestore.instance.runTransaction((transaction) async {
           DocumentSnapshot challengeSnapshot = await transaction.get(userChallengeDocRef);
@@ -587,7 +584,6 @@ class StepTracker with ChangeNotifier {
           debugPrint("Friend Challenge $challengeId has been marked as inactive.");
         }
 
-        // Example: Award coins to the user
         // Fetch user's current coins
         DocumentSnapshot userSnapshot = await transaction.get(
             FirebaseFirestore.instance.collection('users').doc(userId));
@@ -639,7 +635,7 @@ class StepTracker with ChangeNotifier {
       'dailySteps': newDailySteps,
       'weeklySteps': newWeeklySteps,
       'monthlySteps': newMonthlySteps,
-      'previousSteps': newDailySteps, // Set to prevent double-counting
+      'previousSteps': newDailySteps, 
     });
 
     // Update local state
@@ -712,7 +708,7 @@ class StepTracker with ChangeNotifier {
   void dispose() {
     _pedometerSubscription?.cancel();
     _activeChallengesSubscription?.cancel();
-    _mainChallengesSubscription?.cancel(); // Cancel main challenges subscription
+    _mainChallengesSubscription?.cancel();
     _userDocSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();

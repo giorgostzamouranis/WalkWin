@@ -31,7 +31,7 @@ class _ScanFriendPageState extends State<ScanFriendPage> {
 
         final scannedUsername = scanData.code;
         if (scannedUsername != null && scannedUsername.isNotEmpty) {
-          // Optional: pause the camera so it doesn't keep scanning
+          // pause the camera so it doesn't keep scanning
           _controller?.pauseCamera();
 
           // 1) Search Firestore for a user with this username
@@ -98,11 +98,10 @@ class _ScanFriendPageState extends State<ScanFriendPage> {
             key: _qrKey,
             onQRViewCreated: _onQRViewCreated,
           ),
-          // A semi-transparent overlay if you want a scanning target box, etc.
+          // A semi-transparent overlay
           Positioned.fill(
             child: Container(
               color: Colors.black26,
-              // Add any additional overlay design here
             ),
           ),
         ],

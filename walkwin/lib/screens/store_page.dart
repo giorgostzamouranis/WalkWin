@@ -344,7 +344,7 @@ Positioned(
   child: Container(
     color: Colors.teal.shade700,
     height: 120,
-    padding: const EdgeInsets.only(top: 24.0, bottom: 1.0, left: 16, right: 16), // Adjust vertical spacing
+    padding: const EdgeInsets.only(top: 24.0, bottom: 1.0, left: 16, right: 16),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -393,7 +393,7 @@ Positioned(
                   double coins = userData['coins'] ?? 0.0;
 
                   return Text(
-                    coins.toStringAsFixed(2), // Display with 2 decimal places
+                    coins.toStringAsFixed(2),
                     style: const TextStyle(
                       color: Colors.yellowAccent,
                       fontSize: 18,
@@ -543,7 +543,7 @@ Positioned(
             ),
             _NavButton(
               imagePath: 'assets/icons/shop_nav.png',
-              onTap: () {}, // No action needed; already on StorePage
+              onTap: () {},
             ),
             _NavButton(
               imagePath: 'assets/icons/target_nav.png',
@@ -589,7 +589,7 @@ Positioned(
                     },
                   ),
                 );                
-              }, // Placeholder for Friends Page or other functionality
+              },
             ),
           ],
         ),
@@ -617,7 +617,7 @@ class _CarouselWidget extends StatefulWidget {
 }
 
 class __CarouselWidgetState extends State<_CarouselWidget> {
-  final PageController _pageController = PageController(viewportFraction: 1.0); // Full width
+  final PageController _pageController = PageController(viewportFraction: 1.0);
   int _currentPage = 0;
 
   @override
@@ -635,8 +635,6 @@ class __CarouselWidgetState extends State<_CarouselWidget> {
 
   Widget _buildOffer(int index) {
     bool isCurrent = (index == _currentPage);
-
-    // Match the size and style of the "Weekly offer" box
     double boxWidth = 375;
     double boxHeight = 111;
 
@@ -680,7 +678,7 @@ class __CarouselWidgetState extends State<_CarouselWidget> {
     return Column(
       children: [
         SizedBox(
-          height: 130, // Slightly larger to account for box height and spacing
+          height: 130,
           child: PageView.builder(
             controller: _pageController,
             physics: const BouncingScrollPhysics(),

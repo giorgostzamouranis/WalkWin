@@ -131,8 +131,8 @@ class _SearchFriendsPageState extends State<SearchFriendsPage> {
                         );
                         return SlideTransition(
                           position: Tween<Offset>(
-                            begin: const Offset(0, 1), // Start from bottom
-                            end: Offset.zero, // End at current position
+                            begin: const Offset(0, 1),
+                            end: Offset.zero,
                           ).animate(curvedAnimation),
                           child: child,
                         );

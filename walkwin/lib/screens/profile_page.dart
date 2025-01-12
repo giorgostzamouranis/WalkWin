@@ -16,7 +16,6 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  // List of avatar images (replace with your own images)
   final List<String> avatars = [
     'assets/images/Avatar1.png',
     'assets/images/Avatar2.png',
@@ -414,9 +413,8 @@ class _ProfileState extends State<Profile> {
                   itemBuilder: (context, index) {
                     return GestureDetector(
                       onTap: () {
-                        // Update the avatar when tapped
                         _changeAvatar(avatars[index]);
-                        Navigator.pop(context); // Close the bottom sheet
+                        Navigator.pop(context);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
