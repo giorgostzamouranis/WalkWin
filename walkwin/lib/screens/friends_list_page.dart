@@ -11,12 +11,12 @@ class FriendsListPage extends StatefulWidget {
 
 class _FriendsListPageState extends State<FriendsListPage> {
   List<Map<String, dynamic>> friends = []; // Local list to store friends data
-  bool isLoading = true; // State to show loading indicator
+  bool isLoading = true; 
 
   @override
   void initState() {
     super.initState();
-    _fetchFriends(); // Fetch friends list on page load
+    _fetchFriends(); 
   }
 
   Future<void> _fetchFriends() async {
@@ -61,7 +61,7 @@ class _FriendsListPageState extends State<FriendsListPage> {
         };
       }));
 
-      // Update the state with the fetched friends
+     
       setState(() {
         friends = friendsDetails;
         isLoading = false;
@@ -79,7 +79,7 @@ class _FriendsListPageState extends State<FriendsListPage> {
 
   ImageProvider<Object> _buildAvatarImage(String? avatarPath) {
     if (avatarPath == null || avatarPath.isEmpty) {
-      // Fallback for null or empty
+     
       return const AssetImage('assets/images/Avatar1.png');
     }
 

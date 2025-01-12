@@ -201,14 +201,14 @@ class _ChallengesState extends State<Challenges> {
         final reward = challenge['reward'].toString();
         final goal = challenge['goal'].toString();
         final isCompleted = challenge['completed'] ?? false;
-        final description = challenge['description'] ?? 'No description provided'; // Get the description
+        final description = challenge['description'] ?? 'No description provided'; 
 
         return ChallengeCard(
           title: title,
           reward: reward,
           goal: goal,
           isCompleted: isCompleted,
-          description: description,  // Pass the description
+          description: description,  
           onTap: () {},
         );
       },
@@ -316,7 +316,7 @@ class ChallengeCard extends StatelessWidget {
   final String reward;
   final String goal;
   final bool isCompleted;
-  final String description;  // Add description field
+  final String description;  
   final VoidCallback onTap;
 
   const ChallengeCard({
@@ -325,7 +325,7 @@ class ChallengeCard extends StatelessWidget {
     required this.reward,
     required this.goal,
     required this.isCompleted,
-    required this.description,  // Receive description
+    required this.description,  
     required this.onTap,
   }) : super(key: key);
 
@@ -392,7 +392,7 @@ Row(
                   const SizedBox(width: 8),
 
                   Image.asset(
-                    'assets/icons/coin.png',  // Use the coin asset
+                    'assets/icons/coin.png',  
                     width: 20,
                     height: 20,
                     fit: BoxFit.contain,
@@ -410,7 +410,7 @@ Row(
                   fontSize: 14,
                   color: Colors.black,
                 ),
-                maxLines: 3,  // Limit to 3 lines, expand with ellipsis if too long
+                maxLines: 3,  
                 overflow: TextOverflow.ellipsis,
               ),
               if (isCompleted) 

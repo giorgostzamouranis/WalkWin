@@ -1,4 +1,3 @@
-// lib/screens/challenge_friend_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'friends_page.dart';
 import 'active_challenges_page.dart';
 import 'dart:ui';
-import 'package:flutter/services.dart'; // Import for TextInputFormatter
+import 'package:flutter/services.dart'; 
 
 class ChallengeFriendPage extends StatefulWidget {
   const ChallengeFriendPage({Key? key}) : super(key: key);
@@ -43,8 +42,7 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
       curve: Curves.easeInOut,
     ));
 
-    // Removed the undefined method call
-    // updateChallengeSteps();
+
   }
 
   Future<List<Map<String, dynamic>>> fetchFriends() async {
@@ -137,7 +135,7 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
         'createdBy': userId,
         'createdAt': FieldValue.serverTimestamp(),
         'isActive': true,
-        'winnerReward': 5.0, // Ensure this field exists if used
+        'winnerReward': 5.0, 
       });
 
       print('Challenge stored successfully with ID: ${challengeRef.id}');
@@ -153,18 +151,16 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
           'challengeName': challengeName,
           'stepsGoal': stepsGoal,
           'participants': participants,
-          'steps': 0, // Initialize user's steps to 0
+          'steps': 0, 
           'createdBy': userId,
           'createdAt': FieldValue.serverTimestamp(),
           'isActive': true,
-          'winnerReward': 5.0, // Ensure this field exists if used
+          'winnerReward': 5.0, 
         });
       }
 
-      // **Do not reset challengeName and stepsGoal here**
-      // **Allow the user to press Start**
 
-      // Optionally, you can provide feedback or navigate to another page
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Challenge created successfully!'),
@@ -173,7 +169,6 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
       );
     } catch (e) {
       print('Error storing challenge participants: $e');
-      // Show an error message to the user
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error creating challenge: $e'),
@@ -269,7 +264,6 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
           ),
           actions: [
             ElevatedButton(
-              // Inside your AlertDialog's ElevatedButton onPressed:
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
                   // Check for duplicate challenges
@@ -286,10 +280,9 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
                       ),
                     );
                   } else {
-                    // Proceed to store the challenge
                     storeChallengeParticipants(
                         tempChallengeName, int.parse(tempStepsGoal));
-                    Navigator.of(context).pop(); // Close the dialog only
+                    Navigator.of(context).pop(); 
                   }
                 }
               },
@@ -364,7 +357,6 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
 
   @override
   Widget build(BuildContext context) {
-    // Determine if both friends and challenge details are set
     bool canStartChallenge =
         selectedFriends.isNotEmpty && challengeName.isNotEmpty && stepsGoal > 0;
 
@@ -392,15 +384,15 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Button 1: Friends to Challenge
+                  // button Friends to Challenge
                   ElevatedButton(
                     onPressed: toggleFriendsDialog,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF004D40), // Set button background color
+                      backgroundColor: const Color(0xFF004D40), 
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: const BorderSide(
-                          color: Colors.black, // Add bold border
+                          color: Colors.black, 
                           width: 2.0,
                         ),
                       ),
@@ -410,14 +402,14 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
                       'Friends to Challenge',
                       style: TextStyle(
                         fontSize: 25,
-                        color: Colors.white, // Set button text color to white
-                        fontWeight: FontWeight.bold, // Make button text bold
+                        color: Colors.white, 
+                        fontWeight: FontWeight.bold, 
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Button 2: Set Challenge Details
+                  // Button to Set Challenge Details
                   ElevatedButton(
                     onPressed: showSetChallengeDetails,
                     style: ElevatedButton.styleFrom(
@@ -435,8 +427,8 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
                       'Set Challenge Details',
                       style: TextStyle(
                         fontSize: 25,
-                        color: Colors.white, // Set button text color to white
-                        fontWeight: FontWeight.bold, // Make button text bold
+                        color: Colors.white, 
+                        fontWeight: FontWeight.bold, 
                       ),
                     ),
                   ),
@@ -449,15 +441,15 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
                         "Winner's reward: 5",
                         style: TextStyle(
                           fontSize: 25,
-                          color: Colors.black, // Set button text color to white
-                          fontWeight: FontWeight.bold, // Make button text bold
+                          color: Colors.black, 
+                          fontWeight: FontWeight.bold, 
                         ),
                       ),
                       const SizedBox(width: 10),
                       Image.asset(
                         'assets/icons/coin.png',
-                        width: 30, // Set the width of the coin image
-                        height: 30, // Set the height of the coin image
+                        width: 30, 
+                        height: 30, 
                       ),
                     ],
                   ),
@@ -539,8 +531,8 @@ class _ChallengeFriendPageState extends State<ChallengeFriendPage>
                       'Start',
                       style: TextStyle(
                         fontSize: 18,
-                        color: Colors.black, // Set button text color to white
-                        fontWeight: FontWeight.bold, // Make button text bold
+                        color: Colors.black, 
+                        fontWeight: FontWeight.bold, 
                       ),
                     ),
                   ),

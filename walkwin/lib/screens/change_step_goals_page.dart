@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'profile_page.dart';
 
 class ChangeStepGoalsPage extends StatefulWidget {
-  final Widget returnPage; // Page to return to
+  final Widget returnPage;
 
   const ChangeStepGoalsPage({Key? key, required this.returnPage}) : super(key: key);
 
@@ -55,8 +55,8 @@ class _ChangeStepGoalsPageState extends State<ChangeStepGoalsPage> {
           const SnackBar(content: Text('Goals updated successfully')),
         );
 
-        // Pop back to the previous page (Profile)
-        Navigator.pop(context); // Return to the Profile page
+     
+        Navigator.pop(context); 
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +81,7 @@ class _ChangeStepGoalsPageState extends State<ChangeStepGoalsPage> {
                 icon: Image.asset('assets/icons/arrow_back.png'),
                 iconSize: 40,
                 onPressed: () {
-                  Navigator.pop(context); // Go back to Profile page
+                  Navigator.pop(context); 
                 },
               ),
 

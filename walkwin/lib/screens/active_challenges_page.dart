@@ -1,5 +1,3 @@
-// lib/screens/active_challenges_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -39,8 +37,7 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
     ));
   }
 
-  /// Fetches active challenges where the current user is a participant and the challenge is active.
-  /// For each challenge, it fetches the current user's dailySteps from their user document.
+
   Future<List<Map<String, dynamic>>> fetchActiveChallenges() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -66,7 +63,6 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
         int stepsGoal = data['stepsGoal'] ?? 0;
         List<String> participants = List<String>.from(data['participants'] ?? []);
 
-        // Fetch dailySteps for the current user from their user document
         DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
@@ -75,9 +71,8 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
         int userDailySteps = 0;
         if (userSnapshot.exists) {
           var userData = userSnapshot.data() as Map<String, dynamic>;
-          print('User Data for $userId: $userData'); // Debugging
+          print('User Data for $userId: $userData'); 
 
-          // Use the correct field name "dailySteps"
           if (userData.containsKey('dailySteps')) {
             var stepsField = userData['dailySteps'];
             if (stepsField is int) {
@@ -98,12 +93,12 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
           'challengeId': challengeId,
           'challengeName': challengeName,
           'stepsGoal': stepsGoal,
-          'steps': userDailySteps, // Updated field
+          'steps': userDailySteps, 
           'participants': participants,
         });
       }
 
-      print('Fetched active challenges: $challenges'); // Debugging
+      print('Fetched active challenges: $challenges'); 
       return challenges;
     } catch (e) {
       print('Error fetching active challenges: $e');
@@ -117,14 +112,13 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
     }
   }
 
-  /// Toggles the participants overlay to show detailed information about each participant.
-  /// Fetches each participant's username and their dailySteps from their user documents.
+
   void toggleParticipantsOverlay(
       String challengeId, String challengeName, int stepsGoal) async {
     if (challengeId.isEmpty) return;
 
     try {
-      // Fetch the challenge document to get the list of participants
+
       DocumentSnapshot challengeSnapshot = await FirebaseFirestore.instance
           .collection('active_challenges')
           .doc(challengeId)
@@ -140,7 +134,6 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
 
       List<Map<String, dynamic>> participantsDetails = [];
 
-      // Fetch user data for each participant concurrently using Future.wait
       List<Future<Map<String, dynamic>>> fetchUserFutures = participants.map((participantId) async {
         DocumentSnapshot userSnapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -152,7 +145,6 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
           String username = userData['username'] ?? 'Unknown';
           int participantDailySteps = 0;
 
-          // Use the correct field name "dailySteps"
           if (userData.containsKey('dailySteps')) {
             var stepsField = userData['dailySteps'];
             if (stepsField is int) {
@@ -166,14 +158,13 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
             print('No "dailySteps" field found for participantId: $participantId');
           }
 
-          print('Participant: $participantId, Username: $username, Daily Steps: $participantDailySteps'); // Debugging
+          print('Participant: $participantId, Username: $username, Daily Steps: $participantDailySteps'); 
 
           return {
             'username': username,
-            'steps': participantDailySteps, // Updated field
+            'steps': participantDailySteps, 
           };
         } else {
-          // Fallback if user document not found
           print('User document not found for participantId: $participantId');
           return {
             'username': 'Unknown',
@@ -202,7 +193,6 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
     }
   }
 
-  /// Closes the participants overlay.
   void closeParticipantsOverlay() {
     setState(() {
       showParticipants = false;
@@ -219,7 +209,6 @@ class _ActiveChallengesPageState extends State<ActiveChallengesPage>
     super.dispose();
   }
 
-  /// Builds the main UI of the Active Challenges page.
   @override
   Widget build(BuildContext context) {
     return Scaffold(

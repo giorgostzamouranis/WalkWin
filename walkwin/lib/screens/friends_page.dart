@@ -1,6 +1,6 @@
 import 'dart:io'; 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:flutter/foundation.dart'; 
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -14,7 +14,7 @@ import 'search_friends_page.dart';
 import 'friends_profile_page.dart';
 import 'friends_list_page.dart';
 import 'incoming_friend_request_page.dart';
-import 'package:qr_code_scanner/qr_code_scanner.dart'; // Add the QR code scanning library
+import 'package:qr_code_scanner/qr_code_scanner.dart'; 
 import 'package:flutter/widgets.dart';
 import 'challenge_friend_page.dart';
 import 'active_challenges_page.dart';
@@ -57,19 +57,16 @@ class _FriendsPageState extends State<FriendsPage> {
           .get();
       if (!userDoc.exists) return;
 
-      // 2. Extract friends list
+      
       final friendsIds = List<String>.from(userDoc.data()?['friends'] ?? []);
 
-      // 3. Build the list of allowed UIDs (current user + their friends)
       final allowedUids = [userId, ...friendsIds];
 
-      // 4. Query only stories where `uid` is in allowedUids
       final snapshot = await FirebaseFirestore.instance
           .collection('stories')
           .where('uid', whereIn: allowedUids)
           .get();
 
-      // 5. Build a new list that includes each user’s avatar
       List<Map<String, dynamic>> fetchedStories = [];
 
       for (var doc in snapshot.docs) {
@@ -77,7 +74,6 @@ class _FriendsPageState extends State<FriendsPage> {
         final storyOwnerUid = data['uid'] as String?;
         if (storyOwnerUid == null) continue;
 
-        // Fetch user doc for avatar, updated username, etc.
         final ownerDoc = await FirebaseFirestore.instance
             .collection('users')
             .doc(storyOwnerUid)
@@ -87,7 +83,7 @@ class _FriendsPageState extends State<FriendsPage> {
         final ownerUsername = ownerData['username'] ?? 'Unknown User';
 
         fetchedStories.add({
-          'storyUrl': data['storyUrl'],    // URL to the story image
+          'storyUrl': data['storyUrl'],    
           'uid': storyOwnerUid,
           'username': ownerUsername,
           'avatar': avatarPath,
@@ -95,14 +91,13 @@ class _FriendsPageState extends State<FriendsPage> {
       }
 
       // 6. Sort so the current user's story is first
-      //    We'll place items where `uid == userId` at the front
       fetchedStories.sort((a, b) {
         if (a['uid'] == userId && b['uid'] != userId) {
-          return -1; // a comes first
+          return -1; 
         } else if (b['uid'] == userId && a['uid'] != userId) {
-          return 1;  // b comes first
+          return 1;  
         } else {
-          return 0;  // no change
+          return 0;  
         }
       });
 
@@ -141,7 +136,7 @@ class _FriendsPageState extends State<FriendsPage> {
     }
 
     try {
-      // Fetch the current user's data
+      
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
       if (!userDoc.exists) {
         return;
@@ -150,13 +145,11 @@ class _FriendsPageState extends State<FriendsPage> {
       final currentUser = {
         'username': userDoc['username'],
         'monthlySteps': userDoc['monthlySteps'] ?? 0,
-        'isCurrentUser': true, // Flag to identify the logged-in user
+        'isCurrentUser': true, 
       };
 
-      // Fetch the current user's friends list
       final friends = List<String>.from(userDoc['friends'] ?? []);
 
-      // Fetch friends' data
       List<Map<String, dynamic>> friendsData = [];
       if (friends.isNotEmpty) {
         final friendsSnapshot = await FirebaseFirestore.instance
@@ -173,7 +166,6 @@ class _FriendsPageState extends State<FriendsPage> {
         }).toList();
       }
 
-      // Combine current user and friends, then sort by monthly steps
       final allData = [currentUser, ...friendsData];
       allData.sort((a, b) => b['monthlySteps'].compareTo(a['monthlySteps']));
 
@@ -209,7 +201,7 @@ class _FriendsPageState extends State<FriendsPage> {
         return;
       }
 
-      setState(() => _isUploading = true);  // Start loading animation
+      setState(() => _isUploading = true);  
 
       try {
         final file = File(photo.path);
@@ -291,11 +283,11 @@ class _FriendsPageState extends State<FriendsPage> {
                   child: Column(
                     children: [
                       Expanded(
-                        flex: 3, // Adjust the flex to make leaderboard smaller
+                        flex: 3, 
                         child: _buildLeaderboard(),
                       ),
-                      const SizedBox(height: 1), // Add spacing between leaderboard and buttons
-                      _buildActionButtons(), // Add the new buttons here
+                      const SizedBox(height: 1), 
+                      _buildActionButtons(), 
                     ],
                   ),
                 ),
@@ -307,7 +299,7 @@ class _FriendsPageState extends State<FriendsPage> {
         if (_isUploading)
           Positioned.fill(
             child: Container(
-              // Semi-transparent dark background
+              
               color: Colors.black54,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -315,7 +307,7 @@ class _FriendsPageState extends State<FriendsPage> {
                   const CircularProgressIndicator(
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
-                  const SizedBox(height: 16), // Spacing between the spinner and text
+                  const SizedBox(height: 16), 
                   const Text(
                     "Uploading story",
                     style: TextStyle(
@@ -377,7 +369,6 @@ Widget _buildWalcoins() {
           fit: BoxFit.contain,
         ),
       ),
-      // StreamBuilder to listen to the coins value in Firestore
       StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('users')
@@ -398,7 +389,7 @@ Widget _buildWalcoins() {
             double coins = userData['coins'] ?? 0.0;
 
             return Text(
-              coins.toStringAsFixed(2), // Display coins with two decimal points
+              coins.toStringAsFixed(2), 
               style: TextStyle(
                 color: Colors.yellowAccent,
                 fontSize: 18,
@@ -488,9 +479,9 @@ Widget _buildWalcoins() {
         // Line above stories
         const Divider(
           color: Colors.black,
-          thickness: 1, // Thin line
+          thickness: 1, 
         ),
-        const SizedBox(height: 1), // Add some spacing
+        const SizedBox(height: 1), 
 
         // Stories Row
         Padding(
@@ -545,7 +536,7 @@ Widget _buildWalcoins() {
                               ),
                               const SizedBox(height: 4),
                               SizedBox(
-                                width: 60, // Constrain username width if you want
+                                width: 60, 
                                 child: Text(
                                   story['username'],
                                   style: const TextStyle(
@@ -644,12 +635,12 @@ Widget _buildWalcoins() {
             ],
           ),
         ),
-        const SizedBox(height: 1), // Add some spacing
+        const SizedBox(height: 1), 
 
         // Line below stories
         const Divider(
           color: Colors.black,
-          thickness: 1, // Thin line
+          thickness: 1, 
         ),
       ],
     );
@@ -679,8 +670,8 @@ Widget _buildWalcoins() {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: SizedBox(
-          width: 375, // Set the desired width
-          height: 36,  // Set the desired height
+          width: 375, 
+          height: 36,  
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -867,14 +858,14 @@ Widget _buildWalcoins() {
                   MaterialPageRoute(builder: (context) => ChallengeFriendPage()),
                 ); 
               }),
-        const SizedBox(height: 10), // Space between buttons
+        const SizedBox(height: 10), 
         _buildActionButton('Active Challenges', 'assets/icons/clock_forward.png', onTap: () {
           Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => ActiveChallengesPage()),
                 );
         }),
-        const SizedBox(height: 10), // Space between buttons
+        const SizedBox(height: 10), 
         _buildActionButton(
           'Scan Friends',
           'assets/icons/scanner.png',
@@ -901,7 +892,7 @@ Widget _buildWalcoins() {
           color: const Color(0xFF004D40),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.black, // Black stroke
+            color: Colors.black, 
             width: 2.0,
           ),
         ),
@@ -910,7 +901,7 @@ Widget _buildWalcoins() {
             // Icon on the left
             Positioned(
               left: 16,
-              top: -4, // Adjust top to vertically align the icon
+              top: -4, 
               child: Image.asset(
                 iconPath,
                 width: 45,

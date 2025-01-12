@@ -13,7 +13,7 @@ class FriendsProfilePage extends StatefulWidget {
 }
 
 class _FriendsProfilePageState extends State<FriendsProfilePage> {
-  bool _isSendingRequest = false; // To track if the friend request is being sent
+  bool _isSendingRequest = false; 
 
   Future<void> _sendFriendRequest() async {
     setState(() {
@@ -21,7 +21,6 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
     });
 
     try {
-      // Get the logged-in user's UID and friend's UID
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
       final friendId = widget.user['uid'];
 
@@ -32,17 +31,14 @@ class _FriendsProfilePageState extends State<FriendsProfilePage> {
         return;
       }
 
-      // Reference to the friend's friendRequests sub-collection
       final friendRequestsCollection = FirebaseFirestore.instance
           .collection('users')
           .doc(friendId)
           .collection('friendRequests');
 
-      // Debugging: Check current user and friend
       print('Current User ID: $currentUserId');
       print('Friend ID: $friendId');
 
-      // Delete existing requests from the current user
       final querySnapshot = await friendRequestsCollection
           .where('from', isEqualTo: currentUserId)
           .get();

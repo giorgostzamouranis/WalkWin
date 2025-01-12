@@ -1,13 +1,10 @@
-// lib/screens/home_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // <-- Import Provider
+import 'package:provider/provider.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart'; // ADDED
-import '../step_tracker.dart'; // <-- Import StepTracker
-
-// Import your other screens
+import 'package:url_launcher/url_launcher.dart'; 
+import '../step_tracker.dart'; 
 import 'store_page.dart';
 import 'challenges_page.dart';
 import 'profile_page.dart';
@@ -78,7 +75,7 @@ class HomePage extends StatelessWidget {
                             onPressed: () {
                               incrementSteps(context, 4000); // Increase steps by 4000
                             },
-                            backgroundColor: Colors.white, // Background color of the button
+                            backgroundColor: Colors.white, 
                             elevation: 4,
                             label: const Text("Increase steps by 4000"),
                           ),
@@ -112,29 +109,28 @@ class HomePage extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16), // Spacing between Row and Button
-                        // Center the button below the circular widgets
+                        const SizedBox(height: 16), 
                       ],
                     ),
                   ),
 
-                  // ADDED: Positioned Map Button
+                  
                   Positioned(
-                    top: 20, // Adjust as needed to position over the big circle
-                    right: 20, // Adjust as needed for padding from the right
+                    top: 20, 
+                    right: 20, 
                     child: ElevatedButton(
                       onPressed: () => _openMaps(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00E6B0), // Match your old color
-                        fixedSize: const Size(60, 60), // Fixed size for circular shape
+                        backgroundColor: const Color(0xFF00E6B0), 
+                        fixedSize: const Size(60, 60), 
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30), // Half of width/height for perfect circle
+                          borderRadius: BorderRadius.circular(30), 
                         ),
-                        padding: EdgeInsets.zero, // Remove default padding
+                        padding: EdgeInsets.zero, 
                       ),
                       child: Image.asset(
                         'assets/icons/map.png',
-                        width: 40, // Adjust size as needed
+                        width: 40, 
                         height: 40,
                       ),
                     ),
@@ -213,7 +209,7 @@ class HomePage extends StatelessWidget {
               double coins = (userData['coins'] as num?)?.toDouble() ?? 0.0;
 
               return Text(
-                coins.toStringAsFixed(2), // Display coins with two decimal points
+                coins.toStringAsFixed(2), 
                 style: const TextStyle(
                   color: Colors.yellowAccent,
                   fontSize: 18,
@@ -282,7 +278,7 @@ class HomePage extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            // You can keep the map button here if needed, but based on your latest request, we're adding it below the top bar
+            
           ],
         );
       },
@@ -368,7 +364,7 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  /////////// TEST INCREASE STEPS ////////
+  
   // Function to simulate step increment
   Future<void> incrementSteps(BuildContext context, int incrementBy) async {
     final stepTracker = Provider.of<StepTracker>(context, listen: false);
@@ -376,7 +372,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-/// Custom Widget to display circular step counts
+///  Widget to display circular step counts
 class CircularStepsWidget extends StatelessWidget {
   final String title;
   final String steps;
@@ -445,7 +441,7 @@ class CircularStepsWidget extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Image.asset(
-                'assets/icons/steps.png', // Updated to match your assets
+                'assets/icons/steps.png', 
                 width: iconSize,
                 height: iconSize,
                 fit: BoxFit.contain,
