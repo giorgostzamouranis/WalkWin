@@ -35,6 +35,7 @@ class StepTracker with ChangeNotifier {
   // Stream subscriptions
   StreamSubscription<StepCount>? _pedometerSubscription;
   StreamSubscription<QuerySnapshot>? _activeChallengesSubscription;
+  StreamSubscription<QuerySnapshot>? _mainChallengesSubscription; // New subscription for main challenges
   StreamSubscription<DocumentSnapshot>? _userDocSubscription;
   StreamSubscription<User?>? _authSubscription;
 
@@ -44,11 +45,11 @@ class StepTracker with ChangeNotifier {
   // Previous total steps to calculate difference
   int _previousTotalSteps = 0;
 
-  // List of active challenges IDs
-  List<String> _activeChallengeIds = [];
+  // List of active friend challenges IDs
+  List<String> _activeFriendChallengeIds = [];
 
-  // Map to store steps per challenge
-  Map<String, int> _stepsPerChallenge = {};
+  // Map to store steps per friend challenge
+  Map<String, int> _stepsPerFriendChallenge = {};
 
   // Flag to track the first pedometer event
   bool _isFirstPedometerEvent = true;
@@ -86,8 +87,8 @@ class StepTracker with ChangeNotifier {
 
     // Reset challenge tracking
     _previousTotalSteps = 0;
-    _activeChallengeIds.clear();
-    _stepsPerChallenge.clear();
+    _activeFriendChallengeIds.clear();
+    _stepsPerFriendChallenge.clear();
 
     // Reset the flag
     _isFirstPedometerEvent = true;
@@ -99,9 +100,11 @@ class StepTracker with ChangeNotifier {
   /// Cancels existing Firestore and Pedometer subscriptions
   void _cancelSubscriptions() {
     _activeChallengesSubscription?.cancel();
+    _mainChallengesSubscription?.cancel(); // Cancel main challenges subscription
     _pedometerSubscription?.cancel();
     _userDocSubscription?.cancel();
     _activeChallengesSubscription = null;
+    _mainChallengesSubscription = null; // Reset main challenges subscription
     _pedometerSubscription = null;
     _userDocSubscription = null;
     debugPrint("Existing subscriptions have been canceled.");
@@ -111,14 +114,24 @@ class StepTracker with ChangeNotifier {
   Future<void> _initializeStepTracking(User user) async {
     final userId = user.uid;
 
-    // Listen to active challenges where the user is a participant
+    // Listen to active friend challenges where the user is a participant
     _activeChallengesSubscription = FirebaseFirestore.instance
         .collection('active_friend_challenges')
         .where('participants', arrayContains: userId)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .listen((QuerySnapshot snapshot) {
-      _handleActiveChallengesSnapshot(snapshot);
+      _handleActiveFriendChallengesSnapshot(snapshot);
+    });
+
+    // Listen to main challenges
+    _mainChallengesSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('challenges')
+        .snapshots()
+        .listen((QuerySnapshot snapshot) {
+      _handleMainChallengesSnapshot(snapshot);
     });
 
     // Listen to user's general step counts
@@ -203,33 +216,113 @@ class StepTracker with ChangeNotifier {
     }
   }
 
-  /// Handles the active challenges snapshot
-  void _handleActiveChallengesSnapshot(QuerySnapshot snapshot) {
+  /// Handles the active friend challenges snapshot
+  void _handleActiveFriendChallengesSnapshot(QuerySnapshot snapshot) {
     List<String> updatedChallengeIds = [];
     Map<String, int> updatedStepsPerChallenge = {};
 
     for (var doc in snapshot.docs) {
       String challengeId = doc.id;
       updatedChallengeIds.add(challengeId);
-      updatedStepsPerChallenge[challengeId] = doc['steps'][_currentUser!.uid] ?? 0;
+      updatedStepsPerChallenge[_currentUser!.uid] =
+          doc['steps'][_currentUser!.uid] ?? 0;
     }
 
     // Determine added and removed challenges
     List<String> addedChallenges =
-        updatedChallengeIds.where((id) => !_activeChallengeIds.contains(id)).toList();
+        updatedChallengeIds.where((id) => !_activeFriendChallengeIds.contains(id)).toList();
     List<String> removedChallenges =
-        _activeChallengeIds.where((id) => !updatedChallengeIds.contains(id)).toList();
+        _activeFriendChallengeIds.where((id) => !updatedChallengeIds.contains(id)).toList();
 
-    // Update the activeChallengeIds list
-    _activeChallengeIds = updatedChallengeIds;
+    // Update the activeFriendChallengeIds list
+    _activeFriendChallengeIds = updatedChallengeIds;
 
-    // Update stepsPerChallenge map
-    _stepsPerChallenge = updatedStepsPerChallenge;
+    // Update stepsPerFriendChallenge map
+    _stepsPerFriendChallenge = updatedStepsPerChallenge;
 
     notifyListeners();
 
-    debugPrint("Active challenges updated: $_activeChallengeIds");
+    debugPrint("Active friend challenges updated: $_activeFriendChallengeIds");
   }
+
+  /// Handles the main challenges snapshot
+  void _handleMainChallengesSnapshot(QuerySnapshot snapshot) {
+    for (var doc in snapshot.docs) {
+      String challengeId = doc.id;
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+      String title = data['title'] ?? 'No Title';
+      int goal = data['goal'] ?? 0;
+      bool completed = data['completed'] ?? false;
+
+      // Determine if the user has met the step goal
+      bool hasMetGoal = _stepsToday >= goal || _weeklySteps >= goal || _monthlySteps >= goal;
+
+      // Only mark as completed if not already completed and has met the goal
+      if (!completed && hasMetGoal) {
+        _markMainChallengeAsCompleted(challengeId, goal);
+      }
+    }
+  }
+
+  /// Determines if a challenge should be marked as completed
+  bool _isChallengeCompleted(bool currentStatus, int goal) {
+    if (currentStatus) return true; // Already completed
+
+    // Check based on step counts (daily, weekly, monthly)
+    return _stepsToday >= goal || _weeklySteps >= goal || _monthlySteps >= goal;
+  }
+
+  /// Marks a main challenge as completed in Firestore
+  Future<void> _markMainChallengeAsCompleted(String challengeId, int goal) async {
+    final userId = _currentUser!.uid;
+    final userChallengeDocRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('challenges')
+        .doc(challengeId);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentSnapshot challengeSnapshot = await transaction.get(userChallengeDocRef);
+        if (!challengeSnapshot.exists) {
+          debugPrint("Main Challenge $challengeId does not exist.");
+          return;
+        }
+
+        Map<String, dynamic> data = challengeSnapshot.data() as Map<String, dynamic>;
+        bool isCompleted = data['completed'] ?? false;
+
+        if (!isCompleted) {
+          // Determine which step count met the goal
+          String stepType = '';
+          if (_stepsToday >= goal) {
+            stepType = 'dailySteps';
+          } else if (_weeklySteps >= goal) {
+            stepType = 'weeklySteps';
+          } else if (_monthlySteps >= goal) {
+            stepType = 'monthlySteps';
+          }
+
+          // Update the 'completed' field
+          transaction.update(userChallengeDocRef, {
+            'completed': true,
+          });
+
+          debugPrint("Main Challenge $challengeId marked as completed based on $stepType.");
+        }
+      });
+    } catch (e) {
+      debugPrint("Failed to mark main challenge as completed: $e");
+    }
+  }
+
+  /// Handles pedometer errors
+  void onStepCountError(Object? error) { // Changed to Object? to make it nullable
+    debugPrint("Pedometer Error: $error");
+    // Optionally, handle pedometer errors here
+  }
+
 
   /// Handles new step counts from the pedometer
   Future<void> onStepCount(StepCount event) async {
@@ -280,7 +373,6 @@ class StepTracker with ChangeNotifier {
       notifyListeners();
     }
   }
-
 
   Future<void> _updateGeneralSteps(int stepDifference, String userId) async {
     final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
@@ -347,11 +439,56 @@ class StepTracker with ChangeNotifier {
     }).catchError((error) {
       debugPrint("Failed to update general steps: $error");
     });
+
+    // After updating general steps, check main challenges
+    await _checkAndMarkMainChallenges();
   }
 
+  /// Checks and marks main challenges as completed based on updated step counts
+  Future<void> _checkAndMarkMainChallenges() async {
+    if (_currentUser == null) return;
 
-  /// Increments steps for a specific challenge
-  Future<void> _incrementChallengeSteps(String challengeId, int steps) async {
+    String userId = _currentUser!.uid;
+
+    try {
+      QuerySnapshot challengesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('challenges')
+          .where('completed', isEqualTo: false) // Only check incomplete challenges
+          .get();
+
+      for (var doc in challengesSnapshot.docs) {
+        String challengeId = doc.id;
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+        String title = data['title'] ?? 'No Title';
+        int goal = data['goal'] ?? 0;
+
+        // Determine if the user has met the goal
+        bool hasMetGoal = _stepsToday >= goal ||
+            _weeklySteps >= goal ||
+            _monthlySteps >= goal;
+
+        if (hasMetGoal) {
+          // Mark the challenge as completed
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('challenges')
+              .doc(challengeId)
+              .update({'completed': true});
+
+          debugPrint("Main Challenge '$title' (ID: $challengeId) marked as completed.");
+        }
+      }
+    } catch (e) {
+      debugPrint("Error checking/completing main challenges: $e");
+    }
+  }
+
+  /// Increments steps for a specific friend challenge
+  Future<void> _incrementFriendChallengeSteps(String challengeId, int steps) async {
     final challengeDocRef =
         FirebaseFirestore.instance.collection('active_friend_challenges').doc(challengeId);
 
@@ -359,7 +496,7 @@ class StepTracker with ChangeNotifier {
     FirebaseFirestore.instance.runTransaction((transaction) async {
       DocumentSnapshot challengeSnapshot = await transaction.get(challengeDocRef);
       if (!challengeSnapshot.exists) {
-        debugPrint("Challenge $challengeId does not exist.");
+        debugPrint("Friend Challenge $challengeId does not exist.");
         return;
       }
 
@@ -377,33 +514,33 @@ class StepTracker with ChangeNotifier {
       });
 
       debugPrint(
-          "Challenge $challengeId: Updated steps for user $userId to $updatedSteps.");
+          "Friend Challenge $challengeId: Updated steps for user $userId to $updatedSteps.");
 
       // Check if the challenge is completed by this user
       if (updatedSteps >= data['stepsGoal'] && data['isActive'] == true) {
         // Mark the challenge as completed for this user
-        debugPrint("User $userId has met the step goal for challenge $challengeId.");
+        debugPrint("User $userId has met the step goal for Friend Challenge $challengeId.");
 
-        // Example: Update a 'completedParticipants' list
+        // Update 'completedParticipants'
         List<dynamic> completedParticipants = List.from(data['completedParticipants'] ?? []);
         if (!completedParticipants.contains(userId)) {
           completedParticipants.add(userId);
           transaction.update(challengeDocRef, {
             'completedParticipants': completedParticipants,
           });
-          debugPrint("User $userId marked as completed in challenge $challengeId.");
+          debugPrint("User $userId marked as completed in Friend Challenge $challengeId.");
         }
 
         // Optionally, check if all participants have completed the challenge
-        List<dynamic> participants = data['participants'] ?? [];
-        List<dynamic> allCompleted = data['completedParticipants'] ?? [];
+        List<dynamic> participants = List.from(data['participants'] ?? []);
+        List<dynamic> allCompleted = List.from(data['completedParticipants'] ?? []);
 
         if (allCompleted.length >= participants.length) {
           // Mark the challenge as inactive
           transaction.update(challengeDocRef, {
             'isActive': false,
           });
-          debugPrint("Challenge $challengeId has been marked as inactive.");
+          debugPrint("Friend Challenge $challengeId has been marked as inactive.");
         }
 
         // Example: Award coins to the user
@@ -418,17 +555,11 @@ class StepTracker with ChangeNotifier {
             FirebaseFirestore.instance.collection('users').doc(userId),
             {'coins': currentCoins + reward});
 
-        debugPrint("Awarded $reward coins to user $userId for completing challenge $challengeId.");
+        debugPrint("Awarded $reward coins to user $userId for completing Friend Challenge $challengeId.");
       }
     }).catchError((error) {
-      debugPrint("Failed to update challenge steps: $error");
+      debugPrint("Failed to update friend challenge steps: $error");
     });
-  }
-
-  /// Handles pedometer errors
-  void onStepCountError(error) {
-    debugPrint("Pedometer Error: $error");
-    // Optionally, handle pedometer errors here
   }
 
   /// Public method to allow external widgets to add steps manually
@@ -478,12 +609,15 @@ class StepTracker with ChangeNotifier {
 
     debugPrint("Manually added $stepsToAdd steps for user $userId.");
 
-    // Update steps in active challenges
-    if (_activeChallengeIds.isNotEmpty) {
-      for (String challengeId in _activeChallengeIds) {
-        await _incrementChallengeSteps(challengeId, stepsToAdd);
+    // Update steps in active friend challenges
+    if (_activeFriendChallengeIds.isNotEmpty) {
+      for (String challengeId in _activeFriendChallengeIds) {
+        await _incrementFriendChallengeSteps(challengeId, stepsToAdd);
       }
     }
+
+    // Check and mark main challenges as completed
+    await _checkAndMarkMainChallenges();
   }
 
   /// Resets step counters if a new day, week, or month has started
@@ -534,6 +668,7 @@ class StepTracker with ChangeNotifier {
   void dispose() {
     _pedometerSubscription?.cancel();
     _activeChallengesSubscription?.cancel();
+    _mainChallengesSubscription?.cancel(); // Cancel main challenges subscription
     _userDocSubscription?.cancel();
     _authSubscription?.cancel();
     super.dispose();
