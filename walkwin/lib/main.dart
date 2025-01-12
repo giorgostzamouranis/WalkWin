@@ -49,19 +49,18 @@ void main() async {
   }
 
   runApp(
-    DevicePreview(
-      enabled: !kReleaseMode, // Enable DevicePreview only in debug mode
-      builder: (context) => MultiProvider(
-        providers: [
-          ChangeNotifierProvider<StepTracker>(
-            create: (_) => StepTracker(),
-          ),
-          // Add other providers here if needed
-        ],
-        child: const MyApp(),
+  MultiProvider(
+    providers: [
+      ChangeNotifierProvider<StepTracker>(
+        create: (_) => StepTracker(),
       ),
-    ),
-  );
+      // Add other providers here if needed
+    ],
+    child: const MyApp(),
+  ),
+);
+
+
 }
 
 class MyApp extends StatelessWidget {
@@ -72,9 +71,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'WalkWin',
-      // Use DevicePreview
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         primarySwatch: Colors.teal,
       ),
@@ -135,36 +131,3 @@ class MyApp extends StatelessWidget {
 
 
 
-/*
-import 'package:device_preview/device_preview.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'screens/sign_in_page.dart'; // Make sure the ProfilePage is correctly imported.
-import 'screens/welcome_page.dart';
-import 'screens/sign_up_page.dart';
-
-
-void main() {
-  runApp(
-    DevicePreview(
-    enabled: !kReleaseMode,
-    builder: (context) => MyApp(), // Wrap your app
-  ),);
-}
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Profile Page',
-      locale: DevicePreview.locale(context),
-      builder: DevicePreview.appBuilder,
-      theme: ThemeData(
-        primarySwatch: Colors.teal,
-      ),
-      home: const SignUpPage(), // Launch the ProfilePage
-    );
-  }
-}
-*/

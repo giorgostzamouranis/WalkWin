@@ -43,7 +43,24 @@ class HomePage extends StatelessWidget {
                     iconSize: 50,
                     progress: stepTracker.progressToday.clamp(0.0, 1.0),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 16),
+
+
+
+
+//////////////////////  TEST BUTTON TO ADD STEPS MANUALLY  //////////////////////
+                  Center(
+                    child: FloatingActionButton.extended(
+                      onPressed: () {
+                        incrementSteps(context, 4000); // Increase steps by 4000
+                      },
+                      backgroundColor: Colors.white, // Background color of the button
+                      elevation: 4,
+                      label: const Text("Increase steps by 4000"),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -70,20 +87,15 @@ class HomePage extends StatelessWidget {
                             .clamp(0.0, 1.0),
                       ),
 
-                      /////////////////// TEST /////////////////
+                  ],
+                        ),
+                        const SizedBox(height: 16), // Spacing between Row and Button
+                        // Center the button below the circular widgets
 
-                      // Add this button below the CircularStepsWidget in the body section
-                      ElevatedButton(
-                        onPressed: () {
-                          incrementSteps(context, 4000); // Increase steps by 4000
-                        },
-                        child: const Text('Increase Steps by 4000'),
-                      ),
-                    ],
+                       
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

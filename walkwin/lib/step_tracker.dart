@@ -292,6 +292,7 @@ class StepTracker with ChangeNotifier {
 
         Map<String, dynamic> data = challengeSnapshot.data() as Map<String, dynamic>;
         bool isCompleted = data['completed'] ?? false;
+        double reward = (data['reward'] as num?)?.toDouble() ?? 0.0;
 
         if (!isCompleted) {
           // Determine which step count met the goal
@@ -310,6 +311,25 @@ class StepTracker with ChangeNotifier {
           });
 
           debugPrint("Main Challenge $challengeId marked as completed based on $stepType.");
+        
+        // Retrieve the user's current coins
+        DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+        DocumentSnapshot userSnapshot = await transaction.get(userDocRef);
+        if (!userSnapshot.exists) {
+          debugPrint("User document does not exist.");
+          return;
+        }
+
+        double currentCoins = (userSnapshot['coins'] as num?)?.toDouble() ?? 0.0;
+
+        // Update the 'coins' field by adding the reward
+        transaction.update(userDocRef, {
+          'coins': currentCoins + reward,
+        });
+
+        debugPrint("Added $reward coins to user $userId. New coins balance: ${currentCoins + reward}");
+      
+        
         }
       });
     } catch (e) {
@@ -464,6 +484,7 @@ class StepTracker with ChangeNotifier {
 
         String title = data['title'] ?? 'No Title';
         int goal = data['goal'] ?? 0;
+        double reward = (data['reward'] as num?)?.toDouble() ?? 0.0;
 
         // Determine if the user has met the goal
         bool hasMetGoal = _stepsToday >= goal ||
@@ -472,16 +493,39 @@ class StepTracker with ChangeNotifier {
 
         if (hasMetGoal) {
           // Mark the challenge as completed
-          await FirebaseFirestore.instance
+          final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
+          final userChallengeDocRef = FirebaseFirestore.instance
               .collection('users')
               .doc(userId)
               .collection('challenges')
-              .doc(challengeId)
-              .update({'completed': true});
+              .doc(challengeId);
+              //.update({'completed': true});
 
-          debugPrint("Main Challenge '$title' (ID: $challengeId) marked as completed.");
-        }
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          DocumentSnapshot challengeSnapshot = await transaction.get(userChallengeDocRef);
+          DocumentSnapshot userSnapshot = await transaction.get(userDocRef);
+
+          if (!challengeSnapshot.exists) {
+            debugPrint("Main Challenge $challengeId does not exist.");
+            return;
+          }
+
+          bool isCompleted = challengeSnapshot['completed'] ?? false;
+          if (!isCompleted) {
+            // Mark as completed
+            transaction.update(userChallengeDocRef, {'completed': true});
+
+            // Retrieve current coins
+            double currentCoins = (userSnapshot['coins'] as num?)?.toDouble() ?? 0.0;
+
+            // Update coins
+            transaction.update(userDocRef, {'coins': currentCoins + reward});
+
+            debugPrint("Main Challenge $challengeId marked as completed and $reward coins added to user $userId.");
+          }
+        });
       }
+    }
     } catch (e) {
       debugPrint("Error checking/completing main challenges: $e");
     }
