@@ -35,13 +35,13 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID",
-        measurementId: "YOUR_MEASUREMENT_ID",
+        apiKey: "AIzaSyAASVkDIXTZ_LizUE_8bjvftPGCpFBu-ps",
+        authDomain: "walkwin-5d102.firebaseapp.com",
+        projectId: "walkwin-5d102",
+        storageBucket: "walkwin-5d102.firebasestorage.app",
+        messagingSenderId: "613299618395",
+        appId: "1:613299618395:web:2d534c14cedd484e89757e",
+        measurementId: "G-7R8J4RJMP2",
       ),
     );
   } else {

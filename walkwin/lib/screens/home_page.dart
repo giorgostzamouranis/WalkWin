@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // <-- Import Provider
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart'; // ADDED
 import '../step_tracker.dart'; // <-- Import StepTracker
 
 // Import your other screens
@@ -14,6 +15,28 @@ import 'friends_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
+
+  // ADDED: _openMaps function
+  Future<void> _openMaps(BuildContext context) async {
+    final geoUrl = Uri.parse('geo:0,0');
+    if (await canLaunchUrl(geoUrl)) {
+      await launchUrl(geoUrl, mode: LaunchMode.externalApplication);
+    } else {
+      final googleMapsUrl = Uri.parse('comgooglemaps://');
+      if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        final webUrl = Uri.parse('https://www.google.com/maps');
+        if (await canLaunchUrl(webUrl)) {
+          await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open maps.')),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,73 +52,96 @@ class HomePage extends StatelessWidget {
             _buildTopBar(context),
             const SizedBox(height: 16),
 
-            // Steps and Circular Widgets
+            // Steps and Circular Widgets with Map Button Overlay
             Expanded(
-              child: Column(
+              child: Stack(
                 children: [
-                  const SizedBox(height: 30),
-                  CircularStepsWidget(
-                    title: "Steps Today",
-                    steps: stepTracker.stepsToday.toString(),
-                    size: 270,
-                    titleFontSize: 20,
-                    stepsFontSize: 30,
-                    iconSize: 50,
-                    progress: stepTracker.progressToday.clamp(0.0, 1.0),
-                  ),
-                  const SizedBox(height: 16),
+                  // Main Content Column
+                  SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 30),
+                        CircularStepsWidget(
+                          title: "Steps Today",
+                          steps: stepTracker.stepsToday.toString(),
+                          size: 270,
+                          titleFontSize: 20,
+                          stepsFontSize: 30,
+                          iconSize: 50,
+                          progress: stepTracker.progressToday.clamp(0.0, 1.0),
+                        ),
+                        const SizedBox(height: 16),
 
+                        //////////////////////  TEST BUTTON TO ADD STEPS MANUALLY  //////////////////////
+                        Center(
+                          child: FloatingActionButton.extended(
+                            onPressed: () {
+                              incrementSteps(context, 4000); // Increase steps by 4000
+                            },
+                            backgroundColor: Colors.white, // Background color of the button
+                            elevation: 4,
+                            label: const Text("Increase steps by 4000"),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
-
-
-//////////////////////  TEST BUTTON TO ADD STEPS MANUALLY  //////////////////////
-                  Center(
-                    child: FloatingActionButton.extended(
-                      onPressed: () {
-                        incrementSteps(context, 4000); // Increase steps by 4000
-                      },
-                      backgroundColor: Colors.white, // Background color of the button
-                      elevation: 4,
-                      label: const Text("Increase steps by 4000"),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      CircularStepsWidget(
-                        title: "This Week",
-                        steps: stepTracker.weeklySteps.toString(),
-                        size: 180,
-                        titleFontSize: 16,
-                        stepsFontSize: 24,
-                        iconSize: 40,
-                        progress: (stepTracker.weeklySteps /
-                                (stepTracker.dailyGoal * 7))
-                            .clamp(0.0, 1.0),
-                      ),
-                      CircularStepsWidget(
-                        title: "This Month",
-                        steps: stepTracker.monthlySteps.toString(),
-                        size: 140,
-                        titleFontSize: 12,
-                        stepsFontSize: 18,
-                        iconSize: 30,
-                        progress: (stepTracker.monthlySteps /
-                                (stepTracker.dailyGoal * 30))
-                            .clamp(0.0, 1.0),
-                      ),
-
-                  ],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            CircularStepsWidget(
+                              title: "This Week",
+                              steps: stepTracker.weeklySteps.toString(),
+                              size: 180,
+                              titleFontSize: 16,
+                              stepsFontSize: 24,
+                              iconSize: 40,
+                              progress: (stepTracker.weeklySteps /
+                                      (stepTracker.dailyGoal * 7))
+                                  .clamp(0.0, 1.0),
+                            ),
+                            CircularStepsWidget(
+                              title: "This Month",
+                              steps: stepTracker.monthlySteps.toString(),
+                              size: 140,
+                              titleFontSize: 12,
+                              stepsFontSize: 18,
+                              iconSize: 30,
+                              progress: (stepTracker.monthlySteps /
+                                      (stepTracker.dailyGoal * 30))
+                                  .clamp(0.0, 1.0),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16), // Spacing between Row and Button
                         // Center the button below the circular widgets
-
-                       
                       ],
                     ),
                   ),
+
+                  // ADDED: Positioned Map Button
+                  Positioned(
+                    top: 20, // Adjust as needed to position over the big circle
+                    right: 20, // Adjust as needed for padding from the right
+                    child: ElevatedButton(
+                      onPressed: () => _openMaps(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF00E6B0), // Match your old color
+                        fixedSize: const Size(60, 60), // Fixed size for circular shape
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30), // Half of width/height for perfect circle
+                        ),
+                        padding: EdgeInsets.zero, // Remove default padding
+                      ),
+                      child: Image.asset(
+                        'assets/icons/map.png',
+                        width: 40, // Adjust size as needed
+                        height: 40,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -236,6 +282,7 @@ class HomePage extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            // You can keep the map button here if needed, but based on your latest request, we're adding it below the top bar
           ],
         );
       },
@@ -398,7 +445,7 @@ class CircularStepsWidget extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Image.asset(
-                'assets/icons/steps.png',
+                'assets/icons/steps.png', // Updated to match your assets
                 width: iconSize,
                 height: iconSize,
                 fit: BoxFit.contain,
